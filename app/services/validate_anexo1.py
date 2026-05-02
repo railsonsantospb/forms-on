@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from typing import Any, Dict, Tuple
 
 from app.settings import settings
-from app.services.placeholders import build_placeholders_anexo1
+from app.services.placeholders import build_placeholders_anexo1, build_rows_anexo1
 
 def _parse_date(s: str) -> date:
     return date.fromisoformat(s)
@@ -88,6 +88,28 @@ def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
         errors.append({"field": "missao", "message": "Informe datas/horas válidas para o período da missão."})
         mi = mt = None
 
+    # === REGRAS DE CIDADE ===
+    def _norm_cidade(s: str | None) -> str:
+        return (s or "").strip().lower()
+
+    for i, t in enumerate(ida_list):
+        if _norm_cidade(t.get("origem")) == _norm_cidade(t.get("destino")):
+            errors.append({"field": f"trechos.ida.{i}.destino", "message": "A origem e o destino não podem ser a mesma cidade."})
+    for i, t in enumerate(ret_list):
+        if _norm_cidade(t.get("origem")) == _norm_cidade(t.get("destino")):
+            errors.append({"field": f"trechos.retorno.{i}.destino", "message": "A origem e o destino não podem ser a mesma cidade."})
+
+    for i in range(len(ida_list) - 1):
+        if _norm_cidade(ida_list[i].get("destino")) != _norm_cidade(ida_list[i + 1].get("origem")):
+            errors.append({"field": f"trechos.ida.{i + 1}.origem", "message": f"O destino do trecho {i + 1} deve ser a origem do trecho {i + 2}."})
+    for i in range(len(ret_list) - 1):
+        if _norm_cidade(ret_list[i].get("destino")) != _norm_cidade(ret_list[i + 1].get("origem")):
+            errors.append({"field": f"trechos.retorno.{i + 1}.origem", "message": f"O destino do trecho {i + 1} deve ser a origem do trecho {i + 2}."})
+
+    if ida_list and ret_list:
+        if _norm_cidade(ida_list[-1].get("destino")) != _norm_cidade(ret_list[0].get("origem")):
+            errors.append({"field": "trechos.retorno.0.origem", "message": "O destino da ida deve ser o mesmo que a origem do retorno."})
+
     # flags
     flags = payload.get("flags") or {}
     # fora do prazo conforme formulário: 10 dias sem passagens; 30 dias com passagens
@@ -135,4 +157,5 @@ def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
     ]
 
     placeholders = build_placeholders_anexo1(payload, flags)
-    return {"ok": True, "flags": flags, "placeholders": placeholders, "rows": {"ida": ida_rows, "retorno": ret_rows}}
+    rows = build_rows_anexo1(payload["trechos"])
+    return {"ok": True, "flags": flags, "placeholders": placeholders, "rows": rows}

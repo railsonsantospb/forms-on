@@ -60,6 +60,23 @@
           "description": "DDD + número, somente números (10 ou 11 dígitos)."
         },
         "email": { "type": "string", "format": "email", "maxLength": 120 },
+        "tipo_vinculo": { "type": "string", "enum": ["servidor", "nao_servidor", "sepe", "acompanhante_pcd", "outro"] },
+        "passaporte": { "type": "string", "maxLength": 40 },
+        "lotacao_orgao": { "type": "string", "maxLength": 120 },
+        "auxilio_transporte": {
+          "type": "object",
+          "properties": {
+            "recebe": { "type": "boolean" },
+            "valor": { "type": "string", "maxLength": 40 }
+          }
+        },
+        "auxilio_alimentacao": {
+          "type": "object",
+          "properties": {
+            "recebe": { "type": "boolean" },
+            "valor": { "type": "string", "maxLength": 40 }
+          }
+        },
         "dados_bancarios": {
           "type": "object",
           "additionalProperties": false,
@@ -75,6 +92,10 @@
     "motivo_viagem": {
       "type": "string",
       "minLength": 20,
+      "maxLength": 2000
+    },
+    "relacao_pertinencia": {
+      "type": "string",
       "maxLength": 2000
     },
     "trechos": {
@@ -150,6 +171,7 @@
             ]
           }
         },
+        "distancia_km": { "type": "string", "maxLength": 20 },
         "termo_veiculo_proprio_ciente": {
           "type": "boolean",
           "description": "No MVP pode ser apenas 'ciente'. Em evolução."
@@ -195,7 +217,13 @@
           "type": "string",
           "minLength": 10,
           "maxLength": 2000
-        }
+        },
+        "just_viagem_urgente": { "type": "string", "maxLength": 2000 },
+        "just_fds_feriado": { "type": "string", "maxLength": 2000 },
+        "just_aeroporto": { "type": "string", "maxLength": 2000 },
+        "just_grupo_mais_2": { "type": "string", "maxLength": 2000 },
+        "just_grupo_mais_5": { "type": "string", "maxLength": 2000 },
+        "just_mais_30_diarias": { "type": "string", "maxLength": 2000 }
       }
     }
   },

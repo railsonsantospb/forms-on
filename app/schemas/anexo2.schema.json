@@ -4,7 +4,7 @@
   "title": "ANEXO II - Relatório de Viagem",
   "type": "object",
   "additionalProperties": false,
-  "required": ["data_relatorio", "proposto", "afastamento", "atividades_desenvolvidas", "viagem_realizada"],
+  "required": ["data_relatorio", "proposto", "afastamento", "atividades_tabela", "viagem_realizada"],
   "properties": {
     "data_relatorio": { "type": "string", "format": "date" },
 
@@ -16,6 +16,9 @@
         "nome": { "type": "string", "minLength": 3, "maxLength": 120 },
         "cpf": { "type": "string", "pattern": "^[0-9]{11}$" },
         "siape": { "type": "string", "pattern": "^[0-9]{4,15}$" },
+        "cargo_funcao": { "type": "string", "maxLength": 80 },
+        "telefone": { "type": "string", "pattern": "^[0-9]{10,11}$" },
+        "email": { "type": "string", "format": "email", "maxLength": 120 },
         "orgao": {
           "type": "object",
           "additionalProperties": false,
@@ -47,8 +50,8 @@
           "additionalProperties": false,
           "required": ["origem", "destino", "data_hora"],
           "properties": {
-            "origem": { "type": "string", "minLength": 2, "maxLength": 80 },
-            "destino": { "type": "string", "minLength": 2, "maxLength": 80 },
+            "origem": { "type": "string", "minLength": 2, "maxLength": 80, "pattern": "^.+/\\s*[A-Za-z]{2}$" },
+            "destino": { "type": "string", "minLength": 2, "maxLength": 80, "pattern": "^.+/\\s*[A-Za-z]{2}$" },
             "data_hora": { "type": "string", "format": "date-time" }
           }
         },
@@ -57,18 +60,35 @@
           "additionalProperties": false,
           "required": ["origem", "destino", "data_hora"],
           "properties": {
-            "origem": { "type": "string", "minLength": 2, "maxLength": 80 },
-            "destino": { "type": "string", "minLength": 2, "maxLength": 80 },
+            "origem": { "type": "string", "minLength": 2, "maxLength": 80, "pattern": "^.+/\\s*[A-Za-z]{2}$" },
+            "destino": { "type": "string", "minLength": 2, "maxLength": 80, "pattern": "^.+/\\s*[A-Za-z]{2}$" },
             "data_hora": { "type": "string", "format": "date-time" }
           }
         }
       }
     },
 
-    "atividades_desenvolvidas": {
-      "type": "string",
-      "minLength": 20,
-      "maxLength": 4000
+    "alteracoes_cancelamentos_noshow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": { "type": "string", "enum": ["Alteração", "Cancelamento", "No Show", "Outro"] },
+          "descricao": { "type": "string", "minLength": 3 }
+        }
+      }
+    },
+    "atividades_tabela": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "string" },
+          "horario": { "type": "string" },
+          "cidade": { "type": "string" },
+          "atividades": { "type": "string" }
+        }
+      }
     },
 
     "flags": {
@@ -90,6 +110,7 @@
 
     "viagem_realizada": { "type": "string", "enum": ["sim", "nao"] }
   },
+  "required": ["data_relatorio", "proposto", "afastamento", "atividades_tabela"],
 
   "allOf": [
     {

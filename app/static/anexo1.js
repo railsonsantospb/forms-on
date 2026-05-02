@@ -750,12 +750,10 @@ function applyPayloadToFormByName(payload) {
 
         // controles internos do chat
         _manual_feriado_dia_anterior: false,
-        _chat_ida_origem_cidade: null,
-        _chat_ida_destino_cidade: null,
-        _chat_ret_origem_cidade: null,
-        _chat_ret_destino_cidade: null,
+        _motivo_modelo: null,
         _chat_trecho_type: "ida",
-        _chat_trecho_idx: 0
+        _chat_trecho_idx: 0,
+        _chat_temp_cidade: null
       }
     };
 
@@ -1082,7 +1080,6 @@ function applyPayloadToFormByName(payload) {
       const s = chatFull.state;
       const d = chatFull.data;
 
-      // Helpers de pergunta
       const askText = (msg, meta = "") => { addBubble("bot", msg); if (meta) m.meta.textContent = meta; setMode("text"); };
       const askDate = (msg) => { addBubble("bot", msg); setMode("date"); };
       const askDT = (msg) => { addBubble("bot", msg); setMode("datetime"); };
@@ -1090,7 +1087,7 @@ function applyPayloadToFormByName(payload) {
 
       if (s === "start") {
         askQuick(
-          "Olá. Vou te ajudar a preencher seus dados pessoais e bancários. Após isso, você preenchera os trechos de ida e retorno, missão e demais detalhes diretamente no formulário.\nVamos começar: qual e o tipo de solicitaçao?",
+          "Oi! Sou seu assistente de viagens. Vou te ajudar a preencher o Anexo I de forma simples e rápida.\n\nPrimeiro, me conta: qual é o tipo da sua solicitação?",
           [
             { label: "Diárias", primary: true, onClick: () => reply("tipo_solicitacao", "diarias") },
             { label: "Passagens", onClick: () => reply("tipo_solicitacao", "passagens") },
@@ -1105,183 +1102,219 @@ function applyPayloadToFormByName(payload) {
         if (preset) {
           d.data_solicitacao = preset;
           const presetDisplay = formatDateBR(preset) || preset;
-        addBubble("bot", `Usar data atual: ${presetDisplay}.`);
+          addBubble("bot", `Perfeito! Vou usar a data de hoje para a solicitação: ${presetDisplay}.`);
           chatFull.state = "servidor.nome_completo";
           ask();
           return;
         }
-        askDate("Qual a data da solicitação (preenchimento)?");
+        askDate("Qual a data da solicitação?");
         return;
       }
 
       // Servidor (dados pessoais)
-      if (s === "servidor.nome_completo") { askText("Seu nome completo (sem abreviações)."); return; }
-      if (s === "servidor.cargo_funcao") { askText("Seu cargo/função."); return; }
-      if (s === "servidor.cpf") { askText("Seu CPF (somente números)."); return; }
-      if (s === "servidor.rg") { askText("Seu RG (como consta no documento)."); return; }
-      if (s === "servidor.data_nascimento") { askDate("Sua data de nascimento."); return; }
-      if (s === "servidor.siape") { askText("Sua matrícula SIAPE (somente números)."); return; }
-      if (s === "servidor.nome_mae") { askText("Nome completo da mãe (como consta no documento)."); return; }
-      if (s === "servidor.endereco") { askText("Endereço completo (logradouro, nº, bairro, cidade/UF)."); return; }
-      if (s === "servidor.telefone") { askText("Telefone com DDD (somente números)."); return; }
-      if (s === "servidor.email") { askText("E-mail institucional."); return; }
-      if (s === "servidor.banco") { askText("Banco (ex.: Banco do Brasil, Caixa)."); return; }
-      if (s === "servidor.agencia") { askText("Agência (somente números)."); return; }
-      if (s === "servidor.conta") { askText("Conta (somente números)."); return; }
+      if (s === "servidor.nome_completo") { askText("Qual é o seu nome completo? (sem abreviações, por favor)"); return; }
+      if (s === "servidor.cargo_funcao") { askText("Qual é o seu cargo ou função?"); return; }
+      if (s === "servidor.cpf") { askText("Me informe seu CPF (só os números)."); return; }
+      if (s === "servidor.rg") { askText("Agora o seu RG (como está no documento)."); return; }
+      if (s === "servidor.data_nascimento") { askDate("Qual a sua data de nascimento?"); return; }
+      if (s === "servidor.siape") { askText("Qual é a sua matrícula SIAPE?"); return; }
+      if (s === "servidor.nome_mae") { askText("Nome completo da sua mãe (como consta no documento)."); return; }
+      if (s === "servidor.endereco") { askText("Qual é o seu endereço completo? (rua, número, bairro, cidade/UF)"); return; }
+      if (s === "servidor.telefone") { askText("Me passa um telefone de contato com DDD (só os números)."); return; }
+      if (s === "servidor.email") { askText("Qual o seu e-mail institucional?"); return; }
+      if (s === "servidor.banco") { askText("Qual é o banco da sua conta salário? (ex.: Banco do Brasil, Caixa)"); return; }
+      if (s === "servidor.agencia") { askText("Qual é a agência? (só números)"); return; }
+      if (s === "servidor.conta") { askText("E o número da conta? (só números)"); return; }
+      if (s === "servidor.tipo_vinculo") {
+        askQuick("Qual é o seu tipo de vínculo?", [
+          { label: "Servidor (UFPB ou Convidado)", primary: true, onClick: () => reply("servidor.tipo_vinculo", "servidor") },
+          { label: "Não Servidor", onClick: () => reply("servidor.tipo_vinculo", "nao_servidor") },
+          { label: "SEPE", onClick: () => reply("servidor.tipo_vinculo", "sepe") },
+          { label: "Acompanhante PCD", onClick: () => reply("servidor.tipo_vinculo", "acompanhante_pcd") },
+          { label: "Outro", onClick: () => reply("servidor.tipo_vinculo", "outro") },
+        ]);
+        return;
+      }
+      if (s === "servidor.vinculo_outro_especificar") { askText("Por favor, especifique o vínculo."); return; }
+      if (s === "servidor.passaporte") { askText("Se for viagem internacional, informe o passaporte. Se não for, pode digitar 'não'."); return; }
+      if (s === "servidor.lotacao_orgao") { askText("Qual é a sua lotação/órgão? (ex.: Departamento de Ciências)"); return; }
+      if (s === "servidor.auxilio_transporte") {
+        askQuick("Você recebe auxílio transporte?", [
+          { label: "Sim", onClick: () => { chatFull.state = "servidor.auxilio_transporte_valor"; ask(); } },
+          { label: "Não", primary: true, onClick: () => reply("servidor.auxilio_transporte", false) },
+        ]);
+        return;
+      }
+      if (s === "servidor.auxilio_transporte_valor") { askText("Qual o valor do auxílio transporte? (ex.: R$ 200,00)"); return; }
+      if (s === "servidor.auxilio_alimentacao") {
+        askQuick("Você recebe auxílio alimentação?", [
+          { label: "Sim", onClick: () => { chatFull.state = "servidor.auxilio_alimentacao_valor"; ask(); } },
+          { label: "Não", primary: true, onClick: () => reply("servidor.auxilio_alimentacao", false) },
+        ]);
+        return;
+      }
+      if (s === "servidor.auxilio_alimentacao_valor") { askText("Qual o valor do auxílio alimentação? (ex.: R$ 400,00)"); return; }
 
-      // Trechos, missao e outros campos serão preenchidos diretamente no formulário
-      // (removido fluxo do assistente para esses campos)
-      //       if (s === "trechos.ida.origem") {
-      //         const idx = d._chat_trecho_idx;
-      //         const num = idx + 1;
-      //         askText(idx === 0 ? "Cidade de origem da ida (ex.: Joao Pessoa)." : `Trecho de ida ${num} - cidade de origem.`);
-      //         return;
-      //       }
-      //       if (s === "trechos.ida.origem_uf") { askText("Estado (UF) de origem (sigla, ex.: PB)."); return; }
-      //       if (s === "trechos.ida.destino") {
-      //         const idx = d._chat_trecho_idx;
-      //         const num = idx + 1;
-      //         askText(idx === 0 ? "Cidade de destino da ida (ex.: Recife)." : `Trecho de ida ${num} - cidade de destino.`);
-      //         return;
-      //       }
-      //       if (s === "trechos.ida.destino_uf") { askText("Estado (UF) de destino (sigla, ex.: PE)."); return; }
-      //       if (s === "trechos.ida.data_hora") {
-      //         const idx = d._chat_trecho_idx;
-      //         askDT(idx === 0 ? "Data e hora da ida." : `Trecho de ida ${idx + 1} - data e hora.`);
-      //         return;
-      //       }
-      //       if (s === "trechos.ida.mais") {
-      //         const atual = d.trechos.ida;
-      //         const ultimo = atual[atual.length - 1];
-      //         const resumo = ultimo ? ("Trecho " + atual.length + ": " + ultimo.origem + " > " + ultimo.destino) : "";
-      //         askQuick(
-      //           (resumo ? resumo + "\n" : "") + "Deseja adicionar mais um trecho de ida?",
-      //           [
-      //             { label: "Sim, mais um trecho", onClick: () => {
-      //               d._chat_trecho_idx = d.trechos.ida.length;
-      //               d._chat_trecho_type = "ida";
-      //               chatFull.state = "trechos.ida.origem"; ask();
-      //             }},
-      //             { label: "Nao, seguir para retorno", primary: true, onClick: () => {
-      //               d._chat_trecho_idx = 0;
-      //               d._chat_trecho_type = "retorno";
-      //               chatFull.state = "trechos.retorno.origem"; ask();
-      //             }},
-      //           ]
-      //         );
-      //         return;
-      //       }
+      // Trechos de IDA
+      if (s === "trechos.ida.origem") {
+        const idx = d._chat_trecho_idx;
+        const num = idx + 1;
+        if (idx === 0) {
+          askText("Vamos aos trechos da viagem. De qual cidade você vai sair? (ex.: João Pessoa)");
+        } else {
+          askText(`Trecho de ida ${num}: de qual cidade você parte agora?`);
+        }
+        return;
+      }
+      if (s === "trechos.ida.origem_uf") { askText("Qual o estado (UF)? (ex.: PB)"); return; }
+      if (s === "trechos.ida.destino") {
+        const idx = d._chat_trecho_idx;
+        const num = idx + 1;
+        askText(idx === 0 ? "Para qual cidade você vai? (ex.: Recife)" : `Trecho de ida ${num}: qual o destino desta etapa?`);
+        return;
+      }
+      if (s === "trechos.ida.destino_uf") { askText("Qual o estado do destino? (ex.: PE)"); return; }
+      if (s === "trechos.ida.data_hora") {
+        const idx = d._chat_trecho_idx;
+        askDT(idx === 0 ? "Quando é a partida? Informe data e hora." : `Trecho de ida ${idx + 1}: data e hora da partida.`);
+        return;
+      }
+      if (s === "trechos.ida.mais") {
+        const atual = d.trechos.ida;
+        const ultimo = atual[atual.length - 1];
+        const resumo = ultimo ? (`Último trecho: ${ultimo.origem} → ${ultimo.destino}`) : "";
+        askQuick(
+          (resumo ? resumo + "\n\n" : "") + "Precisa adicionar mais algum trecho de ida?",
+          [
+            { label: "Sim, adicionar outro", onClick: () => {
+                d._chat_trecho_idx = d.trechos.ida.length;
+                d._chat_trecho_type = "ida";
+                chatFull.state = "trechos.ida.origem"; ask();
+            }},
+            { label: "Não, continuar para retorno", primary: true, onClick: () => {
+                d._chat_trecho_idx = 0;
+                d._chat_trecho_type = "retorno";
+                chatFull.state = "trechos.retorno.origem"; ask();
+            }},
+          ]
+        );
+        return;
+      }
 
-      //       if (s === "trechos.retorno.origem") {
-      //         const idaList = d.trechos.ida;
-      //         const ultimaIda = idaList[idaList.length - 1];
-      //         const destinoIda = ultimaIda ? ultimaIda.destino : null;
-      //         const idx = d._chat_trecho_idx || 0;
-      //         if (idx === 0 && destinoIda) {
-      //           askQuick(
-      //             "Origem do retorno. Normalmente e o destino da ultima ida. Confirmar?",
-      //             [
-      //               {
-      //                 label: "Usar \"" + destinoIda + "\"", primary: true, onClick: () => {
-      //                   const retIdx = d._chat_trecho_idx || 0;
-      //                   if (!d.trechos.retorno[retIdx]) d.trechos.retorno[retIdx] = { origem: null, destino: null, data_hora: null };
-      //                   d.trechos.retorno[retIdx].origem = destinoIda;
-      //                   addBubble("user", destinoIda);
-      //                   chatFull.state = "trechos.retorno.destino"; ask();
-      //                 }
-      //               },
-      //               { label: "Informar manualmente", onClick: () => { chatFull.state = "trechos.retorno.origem_text"; ask(); } },
-      //             ]
-      //           );
-      //         } else {
-      //           const num = idx + 1;
-      //           askText(idx === 0 ? "Cidade de origem do retorno." : "Trecho de retorno " + num + " - cidade de origem.");
-      //         }
-      //         return;
-      //       }
-      //       if (s === "trechos.retorno.origem_text") {
-      //         const idx = d._chat_trecho_idx || 0;
-      //         askText(idx === 0 ? "Cidade de origem do retorno (ex.: Recife)." : `Trecho de retorno ${idx + 1} - cidade de origem.`);
-      //         return;
-      //       }
-      //       if (s === "trechos.retorno.origem_uf") { askText("Estado (UF) de origem do retorno (sigla, ex.: PE)."); return; }
+      // Trechos de RETORNO
+      if (s === "trechos.retorno.origem") {
+        const idx = d._chat_trecho_idx || 0;
+        const idaList = d.trechos.ida;
+        const ultimaIda = idaList[idaList.length - 1];
+        const destinoIda = ultimaIda ? ultimaIda.destino : null;
+        if (idx === 0 && destinoIda) {
+          askQuick(
+            `Agora o retorno. Normalmente a origem do retorno é o destino da última ida (${destinoIda}). Confirma?`,
+            [
+              {
+                label: `Sim, usar ${destinoIda}`, primary: true, onClick: () => {
+                  const retIdx = d._chat_trecho_idx || 0;
+                  if (!d.trechos.retorno[retIdx]) d.trechos.retorno[retIdx] = { origem: null, destino: null, data_hora: null };
+                  d.trechos.retorno[retIdx].origem = destinoIda;
+                  addBubble("user", destinoIda);
+                  chatFull.state = "trechos.retorno.destino"; ask();
+                }
+              },
+              { label: "Não, vou informar outra", onClick: () => { chatFull.state = "trechos.retorno.origem_text"; ask(); } },
+            ]
+          );
+        } else {
+          const num = idx + 1;
+          askText(idx === 0 ? "De qual cidade será o retorno?" : `Trecho de retorno ${num}: qual a origem?`);
+        }
+        return;
+      }
+      if (s === "trechos.retorno.origem_text") {
+        const idx = d._chat_trecho_idx || 0;
+        askText(idx === 0 ? "Qual cidade será a origem do retorno?" : `Trecho de retorno ${idx + 1}: qual a cidade de origem?`);
+        return;
+      }
+      if (s === "trechos.retorno.origem_uf") { askText("Qual o estado (UF) de origem do retorno?"); return; }
 
-      //       if (s === "trechos.retorno.destino") {
-      //         const idaList = d.trechos.ida;
-      //         const primeiraIda = idaList[0];
-      //         const origemIda = primeiraIda ? primeiraIda.origem : null;
-      //         const idx = d._chat_trecho_idx || 0;
-      //         const retList = d.trechos.retorno;
-      //         const ultimoRetorno = retList[retList.length - 1];
-      //         const origemUltimoRetorno = ultimoRetorno ? ultimoRetorno.origem : null;
-      //         const sugestao = origemUltimoRetorno || origemIda;
-      //         if (sugestao) {
-      //           askQuick(
-      //             "Destino do retorno. Normalmente e a origem da ida. Confirmar?",
-      //             [
-      //               {
-      //                 label: "Usar \"" + sugestao + "\"", primary: true, onClick: () => {
-      //                   const retIdx = d._chat_trecho_idx || 0;
-      //                   if (!d.trechos.retorno[retIdx]) d.trechos.retorno[retIdx] = { origem: null, destino: null, data_hora: null };
-      //                   d.trechos.retorno[retIdx].destino = sugestao;
-      //                   addBubble("user", sugestao);
-      //                   chatFull.state = "trechos.retorno.data_hora"; ask();
-      //                 }
-      //               },
-      //               { label: "Informar manualmente", onClick: () => { chatFull.state = "trechos.retorno.destino_text"; ask(); } },
-      //             ]
-      //           );
-      //         } else {
-      //           askText("Cidade de destino do retorno" + (idx > 0 ? " (trecho " + (idx + 1) + ")" : "") + ".");
-      //         }
-      //         return;
-      //       }
-      //       if (s === "trechos.retorno.destino_text") {
-      //         const idx = d._chat_trecho_idx || 0;
-      //         const msgDest = idx === 0 ? "Cidade de destino do retorno (ex.: Joao Pessoa)." : "Trecho de retorno " + (idx + 1) + " - cidade de destino.";
-      //         askText(msgDest);
-      //         return;
-      //       }
-      //       if (s === "trechos.retorno.destino_uf") { askText("Estado (UF) de destino do retorno (sigla, ex.: PB)."); return; }
-      //       if (s === "trechos.retorno.mais") {
-      //         const atual = d.trechos.retorno;
-      //         const ultimo = atual[atual.length - 1];
-      //         const resumo = ultimo ? ("Trecho " + atual.length + ": " + ultimo.origem + " > " + ultimo.destino) : "";
-      //         askQuick(
-      //           (resumo ? resumo + "\n" : "") + "Deseja adicionar mais um trecho de retorno?",
-      //           [
-      //             { label: "Sim, mais um trecho", onClick: () => {
-      //               d._chat_trecho_idx = d.trechos.retorno.length;
-      //               d._chat_trecho_type = "retorno";
-      //               chatFull.state = "trechos.retorno.origem_text"; ask();
-      //             }},
-      //             { label: "Nao, continuar", primary: true, onClick: () => {
-      //               chatFull.state = "missao.inicio_data_hora"; ask();
-      //             }},
-      //           ]
-      //         );
-      //         return;
-      //       }
+      if (s === "trechos.retorno.destino") {
+        const idx = d._chat_trecho_idx || 0;
+        const idaList = d.trechos.ida;
+        const primeiraIda = idaList[0];
+        const origemIda = primeiraIda ? primeiraIda.origem : null;
+        const retList = d.trechos.retorno;
+        const ultimoRetorno = retList[retList.length - 1];
+        const origemUltimoRetorno = ultimoRetorno ? ultimoRetorno.origem : null;
+        const sugestao = origemUltimoRetorno || origemIda;
+        if (sugestao) {
+          askQuick(
+            `E o destino do retorno. Normalmente é a cidade de origem da ida (${sugestao}). Confirma?`,
+            [
+              {
+                label: `Sim, usar ${sugestao}`, primary: true, onClick: () => {
+                  const retIdx = d._chat_trecho_idx || 0;
+                  if (!d.trechos.retorno[retIdx]) d.trechos.retorno[retIdx] = { origem: null, destino: null, data_hora: null };
+                  d.trechos.retorno[retIdx].destino = sugestao;
+                  addBubble("user", sugestao);
+                  chatFull.state = "trechos.retorno.data_hora"; ask();
+                }
+              },
+              { label: "Não, informar outro", onClick: () => { chatFull.state = "trechos.retorno.destino_text"; ask(); } },
+            ]
+          );
+        } else {
+          askText("Qual será o destino do retorno?" + (idx > 0 ? ` (trecho ${idx + 1})` : ""));
+        }
+        return;
+      }
+      if (s === "trechos.retorno.destino_text") {
+        const idx = d._chat_trecho_idx || 0;
+        askText(idx === 0 ? "Qual cidade será o destino do retorno?" : `Trecho de retorno ${idx + 1}: qual o destino?`);
+        return;
+      }
+      if (s === "trechos.retorno.destino_uf") { askText("Qual o estado (UF) de destino do retorno?"); return; }
+      if (s === "trechos.retorno.data_hora") {
+        const idx = d._chat_trecho_idx || 0;
+        askDT(idx === 0 ? "Quando é o retorno? Informe data e hora." : `Trecho de retorno ${idx + 1}: data e hora.`);
+        return;
+      }
+      if (s === "trechos.retorno.mais") {
+        const atual = d.trechos.retorno;
+        const ultimo = atual[atual.length - 1];
+        const resumo = ultimo ? (`Último trecho: ${ultimo.origem} → ${ultimo.destino}`) : "";
+        askQuick(
+          (resumo ? resumo + "\n\n" : "") + "Precisa adicionar mais algum trecho de retorno?",
+          [
+            { label: "Sim, adicionar outro", onClick: () => {
+                d._chat_trecho_idx = d.trechos.retorno.length;
+                d._chat_trecho_type = "retorno";
+                chatFull.state = "trechos.retorno.origem_text"; ask();
+            }},
+            { label: "Não, continuar", primary: true, onClick: () => {
+                chatFull.state = "missao.inicio_data_hora"; ask();
+            }},
+          ]
+        );
+        return;
+      }
 
-      //       if (s === "trechos.retorno.data_hora") { askDT("Data e hora do retorno."); return; }
+      // Missão
+      if (s === "missao.inicio_data_hora") { askDT("Quando começa a missão? (data e hora)"); return; }
+      if (s === "missao.termino_data_hora") { askDT("E quando termina? (data e hora)"); return; }
 
-      //       if (s === "missao.inicio_data_hora") { askDT("Início da missão (data e hora)."); return; }
-      //       if (s === "missao.termino_data_hora") { askDT("Término da missão (data e hora)."); return; }
-
-      // Motivo (texto — aqui pode ser menu opcional + texto final)
+      // Motivo
       if (s === "motivo_viagem") {
         askQuick(
-          "Agora o motivo da viagem. Quer que eu monte um texto objetivo a partir de um modelo?",
+          "Agora me conta: qual é o motivo da viagem?\n\nQuer que eu monte um texto objetivo a partir de um modelo, ou prefere escrever livremente?",
           [
-            { label: "Sim (modelo)", primary: true, onClick: () => { chatFull.state = "motivo.modelo"; ask(); } },
-            { label: "Não, vou escrever", onClick: () => { chatFull.state = "motivo.texto_livre"; ask(); } },
+            { label: "Usar modelo", primary: true, onClick: () => { chatFull.state = "motivo.modelo"; ask(); } },
+            { label: "Escrever livremente", onClick: () => { chatFull.state = "motivo.texto_livre"; ask(); } },
           ]
         );
         return;
       }
       if (s === "motivo.modelo") {
         askQuick(
-          "Qual o tipo principal?",
+          "Qual o tipo principal da sua missão?",
           [
             { label: "Evento (congresso/seminário)", primary: true, onClick: () => reply("motivo.modelo", "evento") },
             { label: "Capacitação/Curso", onClick: () => reply("motivo.modelo", "capacitacao") },
@@ -1291,13 +1324,14 @@ function applyPayloadToFormByName(payload) {
         );
         return;
       }
-      if (s === "motivo.objetivo_curto") { askText("Em uma frase: objetivo principal (ex.: apresentar trabalho / capacitação / alinhamento técnico)."); return; }
-      if (s === "motivo.texto_livre") { askText("Escreva o motivo da viagem (mín. 20 caracteres)."); return; }
+      if (s === "motivo.objetivo_curto") { askText("Em uma frase curta, qual o objetivo principal? (ex.: apresentar trabalho, capacitação, alinhamento técnico)"); return; }
+      if (s === "motivo.texto_livre") { askText("Descreva o motivo da viagem com mais detalhes (mínimo 20 caracteres)."); return; }
+      if (s === "relacao_pertinencia") { askText("Descreva a relação de pertinência entre a sua função/cargo e o objeto da viagem (relevância para as finalidades da UFPB). Se não souber, digite 'não'."); return; }
 
       // Débito
       if (s === "debito_recurso.tipo") {
         askQuick(
-          "De onde saem os recursos (débito)?",
+          "De qual fonte sairão os recursos para esta viagem?",
           [
             { label: "CCHSA", primary: true, onClick: () => reply("debito_recurso.tipo", "cchsa") },
             { label: "CAVN", onClick: () => reply("debito_recurso.tipo", "cavn") },
@@ -1307,9 +1341,9 @@ function applyPayloadToFormByName(payload) {
         );
         return;
       }
-      if (s === "debito_recurso.detalhe") { askText("Informe o detalhe (obrigatório para Projeto/Outros)."); return; }
+      if (s === "debito_recurso.detalhe") { askText("Qual o nome ou código do projeto? (ou detalhe de 'Outros')"); return; }
 
-      // Transporte (multi-seleção em conversa)
+      // Transporte
       if (s === "transporte.meios") {
         const mk = (label, value) => ({
           label: (d.transporte.meios.includes(value) ? "✓ " : "") + label,
@@ -1317,12 +1351,12 @@ function applyPayloadToFormByName(payload) {
             const arr = d.transporte.meios;
             if (arr.includes(value)) d.transporte.meios = arr.filter(x => x !== value);
             else d.transporte.meios = [...arr, value];
-            ask(); // re-render
+            ask();
           }
         });
 
         askQuick(
-          "Transporte: voce pode marcar mais de uma opcao. Quando terminar, clique em Continuar.",
+          "Qual(is) meio(s) de transporte você vai utilizar? Pode marcar mais de um. Quando terminar, clique em Continuar.",
           [
             mk("Veículo oficial", "veiculo_oficial"),
             mk("Empresa terrestre", "empresa_terrestre"),
@@ -1333,7 +1367,7 @@ function applyPayloadToFormByName(payload) {
               primary: true,
               onClick: () => {
                 if (!d.transporte.meios.length) {
-                  addBubble("bot", "Preciso que você selecione pelo menos um meio de transporte.");
+                  addBubble("bot", "Opa! Preciso que você selecione pelo menos um meio de transporte.");
                   return;
                 }
                 if (d.transporte.meios.includes("veiculo_proprio")) {
@@ -1352,7 +1386,7 @@ function applyPayloadToFormByName(payload) {
 
       if (s === "transporte.termo") {
         askQuick(
-          "Você confirma ciência do termo de responsabilidade para veículo próprio?",
+          "Você confirma que está ciente do termo de responsabilidade para uso de veículo próprio?",
           [
             { label: "Sim, estou ciente", primary: true, onClick: () => reply("transporte.termo_veiculo_proprio_ciente", true) },
             { label: "Não", onClick: () => reply("transporte.termo_veiculo_proprio_ciente", false) },
@@ -1361,22 +1395,22 @@ function applyPayloadToFormByName(payload) {
         return;
       }
 
-      // Flags e justificativas condicionais
+      // Flags e justificativas
       if (s === "flags.check") {
         computeFlags();
         const f = d.flags;
         const lines = [];
-        if (f.envolve_fds_feriado_ou_dia_anterior) lines.push("• Envolve fim de semana/feriado/dia anterior: SIM");
-        else lines.push("• Envolve fim de semana/feriado/dia anterior: NÃO");
-        if (f.fora_do_prazo) lines.push("• Fora do prazo: SIM");
-        else lines.push("• Fora do prazo: NÃO");
+        if (f.envolve_fds_feriado_ou_dia_anterior) lines.push("• Sua viagem envolve fim de semana, feriado ou saída no dia anterior.");
+        else lines.push("• Fim de semana/feriado/dia anterior: não detectado.");
+        if (f.fora_do_prazo) lines.push("• A solicitação está FORA DO PRAZO.");
+        else lines.push("• Prazo: dentro do prazo.");
 
         askQuick(
-          "Antes de finalizar, vou checar condições especiais.\n" + lines.join("\n") +
-          "\n\nSe houver feriado ou saída no dia anterior e eu não detectei, você pode marcar manualmente.",
+          "Vou verificar algumas condições especiais antes de finalizar:\n\n" + lines.join("\n") +
+          "\n\nSe houver feriado ou saída no dia anterior que eu não detectei, você pode marcar agora.",
           [
             {
-              label: (d._manual_feriado_dia_anterior ? "✓ " : "") + "Marcar: feriado/dia anterior", onClick: () => {
+              label: (d._manual_feriado_dia_anterior ? "✓ " : "") + "Marcar: feriado/saída dia anterior", onClick: () => {
                 d._manual_feriado_dia_anterior = !d._manual_feriado_dia_anterior;
                 computeFlags();
                 ask();
@@ -1384,10 +1418,9 @@ function applyPayloadToFormByName(payload) {
             },
             {
               label: "Continuar", primary: true, onClick: () => {
-                // valida timeline e direciona
                 const errs = validateTimeline();
                 if (errs.length) {
-                  addBubble("bot", "Encontrei inconsistências:\n" + errs.map(e => "• " + e).join("\n") + "\nVamos corrigir as datas.");
+                  addBubble("bot", "Encontrei algumas inconsistências nas datas:\n" + errs.map(e => "• " + e).join("\n") + "\n\nVamos corrigir?");
                   chatFull.state = "trechos.ida.data_hora";
                   ask();
                   return;
@@ -1414,12 +1447,49 @@ function applyPayloadToFormByName(payload) {
       }
 
       if (s === "justificativas.fds") {
-        askText("Informe a justificativa (fim de semana/feriado/dia anterior).");
+        askText("Por favor, explique a justificativa para fim de semana, feriado ou saída no dia anterior.");
         return;
       }
 
       if (s === "justificativas.prazo") {
-        askText("Informe a justificativa de fora do prazo.");
+        askText("A solicitação está fora do prazo. Qual a justificativa?");
+        return;
+      }
+
+      if (s === "justificativas.extras") {
+        const mk = (label, value) => ({
+          label: (d._justificativas_extras.includes(value) ? "✓ " : "") + label,
+          onClick: () => {
+            const arr = d._justificativas_extras;
+            if (arr.includes(value)) d._justificativas_extras = arr.filter(x => x !== value);
+            else d._justificativas_extras = [...arr, value];
+            ask();
+          }
+        });
+        askQuick(
+          "Há alguma justificativa adicional? Marque as que se aplicam e clique em Continuar.",
+          [
+            mk("Viagem urgente (<20 dias)", "urgente"),
+            mk("Especificação de aeroporto", "aeroporto"),
+            mk("Grupo de mais de 2 pessoas", "grupo2"),
+            mk("Grupo de mais de 5 pessoas", "grupo5"),
+            mk("Mais de 30 diárias acumuladas", "30diarias"),
+            { label: "Continuar", primary: true, onClick: () => {
+                const arr = d._justificativas_extras;
+                if (arr.length === 0) { chatFull.state = "summary"; ask(); return; }
+                d._just_extra_idx = 0;
+                chatFull.state = "justificativas.extra_texto"; ask(); return;
+            }}
+          ]
+        );
+        return;
+      }
+      if (s === "justificativas.extra_texto") {
+        const arr = d._justificativas_extras;
+        const idx = d._just_extra_idx || 0;
+        if (idx >= arr.length) { chatFull.state = "summary"; ask(); return; }
+        const mapa = { urgente: "viagem urgente (menos de 20 dias)", aeroporto: "especificação de aeroporto", grupo2: "grupo de mais de 2 pessoas", grupo5: "grupo de mais de 5 pessoas", "30diarias": "mais de 30 diárias acumuladas no exercício" };
+        askText("Digite a justificativa para: " + (mapa[arr[idx]] || arr[idx]));
         return;
       }
 
@@ -1430,27 +1500,29 @@ function applyPayloadToFormByName(payload) {
         const fmtDT = (v) => formatDateTimeBR(v) || "—";
 
         const cpfMask = d.servidor.cpf ? (d.servidor.cpf.slice(0, 3) + "***" + d.servidor.cpf.slice(-2)) : "-";
-        const idaLinhas = d.trechos.ida.map((t, i) => "  Trecho " + (i + 1) + ": " + t.origem + " > " + t.destino + " | " + fmtDT(t.data_hora)).join("\n") || "  (nenhum)";
-        const retLinhas = d.trechos.retorno.map((t, i) => "  Trecho " + (i + 1) + ": " + t.origem + " > " + t.destino + " | " + fmtDT(t.data_hora)).join("\n") || "  (nenhum)";
-        const termoCiente = d.transporte.meios.includes("veiculo_proprio") ? (" | termo: " + (d.transporte.termo_veiculo_proprio_ciente ? "ciente" : "NAO")) : "";
-        const resumo = "Resumo para aplicar no formulario:\n" +
-          "Tipo: " + d.tipo_solicitacao + "\n" +
-          "Data solicitacao: " + fmtDate(d.data_solicitacao) + "\n\n" +
-          "Servidor: " + d.servidor.nome_completo + " | " + d.servidor.cargo_funcao + "\n" +
-          "CPF: " + cpfMask + " | SIAPE: " + d.servidor.siape + "\n\n" +
-          "Ida:\n" + idaLinhas + "\n" +
-          "Retorno:\n" + retLinhas + "\n\n" +
-          "Missao: " + fmtDT(d.missao.inicio_data_hora) + " ate " + fmtDT(d.missao.termino_data_hora) + "\n" +
-          "Debito: " + d.debito_recurso.tipo + (d.debito_recurso.detalhe ? " (" + d.debito_recurso.detalhe + ")" : "") + "\n" +
+        const idaLinhas = d.trechos.ida.map((t, i) => "  " + (i + 1) + ") " + t.origem + " → " + t.destino + " | " + fmtDT(t.data_hora)).join("\n") || "  (nenhum)";
+        const retLinhas = d.trechos.retorno.map((t, i) => "  " + (i + 1) + ") " + t.origem + " → " + t.destino + " | " + fmtDT(t.data_hora)).join("\n") || "  (nenhum)";
+        const termoCiente = d.transporte.meios.includes("veiculo_proprio") ? (" | termo: " + (d.transporte.termo_veiculo_proprio_ciente ? "ciente" : "não")) : "";
+        const resumo = "Tudo certo! Confira o resumo:\n\n" +
+          "Tipo: " + formatSolicitacaoTipo(d.tipo_solicitacao) + "\n" +
+          "Data solicitação: " + fmtDate(d.data_solicitacao) + "\n\n" +
+          "Servidor:\n" +
+          "  " + d.servidor.nome_completo + " | " + d.servidor.cargo_funcao + "\n" +
+          "  CPF: " + cpfMask + " | SIAPE: " + d.servidor.siape + "\n\n" +
+          "Trechos de ida:\n" + idaLinhas + "\n\n" +
+          "Trechos de retorno:\n" + retLinhas + "\n\n" +
+          "Missão: " + fmtDT(d.missao.inicio_data_hora) + " até " + fmtDT(d.missao.termino_data_hora) + "\n" +
+          "Motivo: " + (d.motivo_viagem || "—") + "\n" +
+          "Débito: " + d.debito_recurso.tipo + (d.debito_recurso.detalhe ? " (" + d.debito_recurso.detalhe + ")" : "") + "\n" +
           "Transporte: " + d.transporte.meios.join(", ") + termoCiente + "\n\n" +
-          "Flags:\n" +
-          "  - envolve fds/feriado/dia anterior: " + (f.envolve_fds_feriado_ou_dia_anterior ? "SIM" : "NAO") + "\n" +
-          "  - fora do prazo: " + (f.fora_do_prazo ? "SIM" : "NAO") + "\n\n" +
-          "Depois disso, voce pode revisar os campos no formulario e gerar o DOC/PDF.";
+          "Condições especiais:\n" +
+          "  - fim de semana/feriado/dia anterior: " + (f.envolve_fds_feriado_ou_dia_anterior ? "SIM" : "NÃO") + "\n" +
+          "  - fora do prazo: " + (f.fora_do_prazo ? "SIM" : "NÃO") + "\n\n" +
+          "Posso aplicar esses dados no formulário?";
 
         askQuick(resumo, [
           {
-            label: "Aplicar e revisar", primary: true, onClick: () => {
+            label: "Sim, aplicar no formulário", primary: true, onClick: () => {
               const payload = buildPayloadFromChatFull();
               finalizeChatAnexo1(payload);
             }
@@ -1461,15 +1533,11 @@ function applyPayloadToFormByName(payload) {
     }
 
     function reply(field, value) {
-      // mensagem do usuário
       addBubble("user", String(value));
 
       const d = chatFull.data;
-
-      // roteamento + validações por campo
       const fail = (msg) => { addBubble("bot", msg); ask(); };
 
-      // helpers de set em paths
       const setPath = (path, val) => {
         const parts = path.split(".");
         let cur = d;
@@ -1479,7 +1547,6 @@ function applyPayloadToFormByName(payload) {
         cur[parts[parts.length - 1]] = val;
       };
 
-      // Transições principais
       if (field === "tipo_solicitacao") {
         d.tipo_solicitacao = value;
         chatFull.state = "data_solicitacao";
@@ -1496,7 +1563,7 @@ function applyPayloadToFormByName(payload) {
 
       // Dados pessoais
       if (chatFull.state === "servidor.nome_completo") {
-        if (!isMinMax(value, 3, 120)) return fail("Nome inválido. Informe o nome completo (mín. 3 caracteres).");
+        if (!isMinMax(value, 3, 120)) return fail("Nome muito curto. Por favor, informe o nome completo.");
         setPath("servidor.nome_completo", value.trim());
         chatFull.state = "servidor.cargo_funcao"; ask(); return;
       }
@@ -1529,7 +1596,7 @@ function applyPayloadToFormByName(payload) {
         chatFull.state = "servidor.endereco"; ask(); return;
       }
       if (chatFull.state === "servidor.endereco") {
-        if (!isMinMax(value, 5, 200)) return fail("Endereço inválido (muito curto).");
+        if (!isMinMax(value, 5, 200)) return fail("Endereço muito curto.");
         setPath("servidor.endereco", value.trim());
         chatFull.state = "servidor.telefone"; ask(); return;
       }
@@ -1559,20 +1626,72 @@ function applyPayloadToFormByName(payload) {
         const ct = onlyDigits(value);
         if (!isNumLen(ct, 1, 20)) return fail("Conta inválida (somente números).");
         setPath("servidor.dados_bancarios.conta", ct);
-        chatFull.state = "summary"; ask(); return;
+        chatFull.state = "servidor.tipo_vinculo"; ask(); return;
+      }
+      if (field === "servidor.tipo_vinculo") {
+        d.servidor.tipo_vinculo = value;
+        if (value === "outro") {
+          chatFull.state = "servidor.vinculo_outro_especificar"; ask(); return;
+        }
+        d.servidor.vinculo_outro_especificar = null;
+        chatFull.state = "servidor.passaporte"; ask(); return;
+      }
+      if (chatFull.state === "servidor.vinculo_outro_especificar") {
+        if (!isMinMax(value, 2, 80)) return fail("Especificação inválida.");
+        d.servidor.vinculo_outro_especificar = value.trim();
+        chatFull.state = "servidor.passaporte"; ask(); return;
+      }
+      if (chatFull.state === "servidor.passaporte") {
+        const v = value.trim();
+        if (v && v.toLowerCase() !== "não" && v.toLowerCase() !== "nao" && v.toLowerCase() !== "n") {
+          d.servidor.passaporte = v;
+        } else {
+          d.servidor.passaporte = null;
+        }
+        chatFull.state = "servidor.lotacao_orgao"; ask(); return;
+      }
+      if (chatFull.state === "servidor.lotacao_orgao") {
+        const v = value.trim();
+        if (v && v.toLowerCase() !== "não" && v.toLowerCase() !== "nao" && v.toLowerCase() !== "n") {
+          d.servidor.lotacao_orgao = v;
+        } else {
+          d.servidor.lotacao_orgao = null;
+        }
+        chatFull.state = "servidor.auxilio_transporte"; ask(); return;
+      }
+      if (field === "servidor.auxilio_transporte") {
+        if (value === false) {
+          d.servidor.auxilio_transporte = { recebe: false, valor: null };
+          chatFull.state = "servidor.auxilio_alimentacao"; ask(); return;
+        }
+      }
+      if (chatFull.state === "servidor.auxilio_transporte_valor") {
+        const v = value.trim();
+        d.servidor.auxilio_transporte = { recebe: true, valor: v || "" };
+        chatFull.state = "servidor.auxilio_alimentacao"; ask(); return;
+      }
+      if (field === "servidor.auxilio_alimentacao") {
+        if (value === false) {
+          d.servidor.auxilio_alimentacao = { recebe: false, valor: null };
+          chatFull.state = "trechos.ida.origem"; ask(); return;
+        }
+      }
+      if (chatFull.state === "servidor.auxilio_alimentacao_valor") {
+        const v = value.trim();
+        d.servidor.auxilio_alimentacao = { recebe: true, valor: v || "" };
+        chatFull.state = "trechos.ida.origem"; ask(); return;
       }
 
-      // Datas (date/datetime) — tratadas nos handlers específicos abaixo
-      // Trechos e missao textos
+      // Trechos IDA
       if (chatFull.state === "trechos.ida.origem") {
-        if (!isMinMax(value, 2, 80)) return fail("Cidade de origem invalida.");
-        d._chat_ida_origem_cidade = value.trim();
+        if (!isMinMax(value, 2, 80)) return fail("Cidade de origem inválida.");
+        d._chat_temp_cidade = value.trim();
         chatFull.state = "trechos.ida.origem_uf"; ask(); return;
       }
       if (chatFull.state === "trechos.ida.origem_uf") {
         const uf = value.trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(uf)) return fail("Informe a sigla do estado com 2 letras (ex.: PB).");
-        const cidade = d._chat_ida_origem_cidade || "";
+        const cidade = d._chat_temp_cidade || "";
         const origem = cidade ? (cidade + "/" + uf) : uf;
         const idx = d._chat_trecho_idx;
         if (!d.trechos.ida[idx]) d.trechos.ida[idx] = { origem: null, destino: null, data_hora: null };
@@ -1580,29 +1699,31 @@ function applyPayloadToFormByName(payload) {
         chatFull.state = "trechos.ida.destino"; ask(); return;
       }
       if (chatFull.state === "trechos.ida.destino") {
-        if (!isMinMax(value, 2, 80)) return fail("Cidade de destino invalida.");
-        d._chat_ida_destino_cidade = value.trim();
+        if (!isMinMax(value, 2, 80)) return fail("Cidade de destino inválida.");
+        d._chat_temp_cidade = value.trim();
         chatFull.state = "trechos.ida.destino_uf"; ask(); return;
       }
       if (chatFull.state === "trechos.ida.destino_uf") {
         const uf = value.trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(uf)) return fail("Informe a sigla do estado com 2 letras (ex.: PE).");
-        const cidade = d._chat_ida_destino_cidade || "";
+        const cidade = d._chat_temp_cidade || "";
         const destino = cidade ? (cidade + "/" + uf) : uf;
         const idx = d._chat_trecho_idx;
         if (!d.trechos.ida[idx]) d.trechos.ida[idx] = { origem: null, destino: null, data_hora: null };
         d.trechos.ida[idx].destino = destino;
         chatFull.state = "trechos.ida.data_hora"; ask(); return;
       }
+
+      // Trechos RETORNO
       if (chatFull.state === "trechos.retorno.origem" || chatFull.state === "trechos.retorno.origem_text") {
-        if (!isMinMax(value, 2, 80)) return fail("Cidade de origem do retorno invalida.");
-        d._chat_ret_origem_cidade = value.trim();
+        if (!isMinMax(value, 2, 80)) return fail("Cidade de origem do retorno inválida.");
+        d._chat_temp_cidade = value.trim();
         chatFull.state = "trechos.retorno.origem_uf"; ask(); return;
       }
       if (chatFull.state === "trechos.retorno.origem_uf") {
         const uf = value.trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(uf)) return fail("Informe a sigla do estado com 2 letras.");
-        const cidade = d._chat_ret_origem_cidade || "";
+        const cidade = d._chat_temp_cidade || "";
         const origem = cidade ? (cidade + "/" + uf) : uf;
         const idx = d._chat_trecho_idx || 0;
         if (!d.trechos.retorno[idx]) d.trechos.retorno[idx] = { origem: null, destino: null, data_hora: null };
@@ -1610,14 +1731,14 @@ function applyPayloadToFormByName(payload) {
         chatFull.state = "trechos.retorno.destino"; ask(); return;
       }
       if (chatFull.state === "trechos.retorno.destino" || chatFull.state === "trechos.retorno.destino_text") {
-        if (!isMinMax(value, 2, 80)) return fail("Cidade de destino do retorno invalida.");
-        d._chat_ret_destino_cidade = value.trim();
+        if (!isMinMax(value, 2, 80)) return fail("Cidade de destino do retorno inválida.");
+        d._chat_temp_cidade = value.trim();
         chatFull.state = "trechos.retorno.destino_uf"; ask(); return;
       }
       if (chatFull.state === "trechos.retorno.destino_uf") {
         const uf = value.trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(uf)) return fail("Informe a sigla do estado com 2 letras.");
-        const cidade = d._chat_ret_destino_cidade || "";
+        const cidade = d._chat_temp_cidade || "";
         const destino = cidade ? (cidade + "/" + uf) : uf;
         const idx = d._chat_trecho_idx || 0;
         if (!d.trechos.retorno[idx]) d.trechos.retorno[idx] = { origem: null, destino: null, data_hora: null };
@@ -1635,19 +1756,28 @@ function applyPayloadToFormByName(payload) {
         const retDate = ultimoRet.data_hora ? ultimoRet.data_hora.split("T")[0] : "-";
 
         const tipo = d._motivo_modelo;
-        let base = "Participacao em atividade institucional";
-        if (tipo === "evento") base = "Participacao em evento tecnico/cientifico";
-        if (tipo === "capacitacao") base = "Participacao em capacitacao/treinamento";
-        if (tipo === "reuniao") base = "Participacao em reuniao tecnica/institucional";
-        if (tipo === "visita") base = "Realizacao de visita tecnica";
+        let base = "Participação em atividade institucional";
+        if (tipo === "evento") base = "Participação em evento técnico/científico";
+        if (tipo === "capacitacao") base = "Participação em capacitação/treinamento";
+        if (tipo === "reuniao") base = "Participação em reunião técnica/institucional";
+        if (tipo === "visita") base = "Realização de visita técnica";
 
-        d.motivo_viagem = base + " em " + idaCity + ", no periodo de " + idaDate + " a " + retDate + ", com objetivo de " + value.trim() + ".";
-        chatFull.state = "debito_recurso.tipo"; ask(); return;
+        d.motivo_viagem = base + " em " + idaCity + ", no período de " + idaDate + " a " + retDate + ", com objetivo de " + value.trim() + ".";
+        chatFull.state = "relacao_pertinencia"; ask(); return;
       }
 
       if (chatFull.state === "motivo.texto_livre") {
         if (!isMinMax(value, 20, 2000)) return fail("Motivo muito curto. Informe ao menos 20 caracteres.");
         d.motivo_viagem = value.trim();
+        chatFull.state = "relacao_pertinencia"; ask(); return;
+      }
+      if (chatFull.state === "relacao_pertinencia") {
+        const v = value.trim();
+        if (v && v.toLowerCase() !== "não" && v.toLowerCase() !== "nao" && v.toLowerCase() !== "n") {
+          d.relacao_pertinencia = v;
+        } else {
+          d.relacao_pertinencia = null;
+        }
         chatFull.state = "debito_recurso.tipo"; ask(); return;
       }
 
@@ -1670,25 +1800,32 @@ function applyPayloadToFormByName(payload) {
       if (chatFull.state === "justificativas.fds") {
         if (!isMinMax(value, 10, 2000)) return fail("Justificativa curta. Informe pelo menos 10 caracteres.");
         d.justificativas.justificativa_fds_feriado_dia_anterior = value.trim();
-
-        // ainda pode precisar de fora do prazo
         computeFlags();
         if (d.flags.fora_do_prazo) {
           chatFull.state = "justificativas.prazo"; ask(); return;
         }
-        chatFull.state = "summary"; ask(); return;
+        chatFull.state = "justificativas.extras"; ask(); return;
       }
 
       if (chatFull.state === "justificativas.prazo") {
         if (!isMinMax(value, 10, 2000)) return fail("Justificativa curta. Informe pelo menos 10 caracteres.");
         d.justificativas.justificativa_fora_prazo = value.trim();
-        chatFull.state = "summary"; ask(); return;
+        chatFull.state = "justificativas.extras"; ask(); return;
+      }
+      if (chatFull.state === "justificativas.extra_texto") {
+        const arr = d._justificativas_extras;
+        const idx = d._just_extra_idx || 0;
+        const mapa = { urgente: "just_viagem_urgente", aeroporto: "just_aeroporto", grupo2: "just_grupo_mais_2", grupo5: "just_grupo_mais_5", "30diarias": "just_mais_30_diarias" };
+        const campo = mapa[arr[idx]];
+        if (campo) d.justificativas[campo] = value.trim();
+        d._just_extra_idx = idx + 1;
+        chatFull.state = "justificativas.extra_texto"; ask(); return;
       }
 
       // Transporte termo
       if (field === "transporte.termo_veiculo_proprio_ciente") {
         if (value !== true) {
-          addBubble("bot", "Sem a ciência do termo, eu não posso manter veículo próprio. Vou desmarcar veículo próprio.");
+          addBubble("bot", "Sem a ciência do termo, não posso manter veículo próprio. Vou desmarcar essa opção.");
           d.transporte.meios = d.transporte.meios.filter(x => x !== "veiculo_proprio");
           d.transporte.termo_veiculo_proprio_ciente = null;
         } else {
@@ -1786,21 +1923,20 @@ function applyPayloadToFormByName(payload) {
       const v = (m.text.value || "").trim();
       if (!v) return;
 
-      // roteamento do texto conforme estado
-      if (chatFull.state === "servidor.nome_completo"
-        || chatFull.state === "servidor.cargo_funcao"
-        || chatFull.state === "servidor.cpf"
-        || chatFull.state === "servidor.rg"
-        || chatFull.state === "servidor.siape"
-        || chatFull.state === "servidor.nome_mae"
-        || chatFull.state === "servidor.endereco"
-        || chatFull.state === "servidor.telefone"
-        || chatFull.state === "servidor.email"
-        || chatFull.state === "servidor.banco"
-        || chatFull.state === "servidor.agencia"
-        || chatFull.state === "servidor.conta"
-      ) {
-        // Para "motivo.modelo", o texto não entra aqui; ele é quick
+      const textStates = [
+        "servidor.nome_completo", "servidor.cargo_funcao", "servidor.cpf", "servidor.rg",
+        "servidor.siape", "servidor.nome_mae", "servidor.endereco", "servidor.telefone",
+        "servidor.email", "servidor.banco", "servidor.agencia", "servidor.conta",
+        "servidor.vinculo_outro_especificar", "servidor.passaporte", "servidor.lotacao_orgao",
+        "servidor.auxilio_transporte_valor", "servidor.auxilio_alimentacao_valor",
+        "trechos.ida.origem", "trechos.ida.origem_uf", "trechos.ida.destino", "trechos.ida.destino_uf",
+        "trechos.retorno.origem", "trechos.retorno.origem_text", "trechos.retorno.origem_uf",
+        "trechos.retorno.destino", "trechos.retorno.destino_text", "trechos.retorno.destino_uf",
+        "motivo.objetivo_curto", "motivo.texto_livre", "relacao_pertinencia",
+        "debito_recurso.detalhe",
+        "justificativas.fds", "justificativas.prazo", "justificativas.extra_texto"
+      ];
+      if (textStates.includes(chatFull.state)) {
         reply(chatFull.state, v);
       }
 
@@ -1836,141 +1972,87 @@ function applyPayloadToFormByName(payload) {
       originalReply(field, value);
     };
 
-    /* Aplicar dados no formulário principal */
-    function applyToForm() {
-      computeFlags();
-      const d = chatFull.data;
+    /* Modal de download do assistente */
+    const downloadModal = document.getElementById("downloadModal");
+    const downloadClose = document.getElementById("downloadClose");
+    const downloadSummary = document.getElementById("downloadSummary");
+    const btnReviewForm = document.getElementById("btnReviewForm");
+    const btnDownloadDOCX = document.getElementById("btnDownloadDOCX");
+    const btnDownloadPDF = document.getElementById("btnDownloadPDF");
 
-      const payload = {
-        tipo_solicitacao: d.tipo_solicitacao,
-        data_solicitacao: d.data_solicitacao,
-        servidor: d.servidor,
-        motivo_viagem: d.motivo_viagem,
-        trechos: {
-          ida: d.trechos.ida.map(t => ({
-            origem: t.origem,
-            destino: t.destino,
-            data_hora: t.data_hora ? (t.data_hora + ":00") : null
-          })),
-          retorno: d.trechos.retorno.map(t => ({
-            origem: t.origem,
-            destino: t.destino,
-            data_hora: t.data_hora ? (t.data_hora + ":00") : null
-          }))
-        },
-        missao: {
-          inicio_data_hora: d.missao.inicio_data_hora ? (d.missao.inicio_data_hora + ":00") : null,
-          termino_data_hora: d.missao.termino_data_hora ? (d.missao.termino_data_hora + ":00") : null
-        },
-        debito_recurso: d.debito_recurso,
-        transporte: d.transporte,
-        flags: d.flags,
-        justificativas: {}
-      };
+    if (downloadClose) downloadClose.addEventListener("click", () => downloadModal.style.display = "none");
 
-      if (d.flags.envolve_fds_feriado_ou_dia_anterior) {
-        payload.justificativas.justificativa_fds_feriado_dia_anterior = d.justificativas.justificativa_fds_feriado_dia_anterior || "";
-      }
-      if (d.flags.fora_do_prazo) {
-        payload.justificativas.justificativa_fora_prazo = d.justificativas.justificativa_fora_prazo || "";
-      }
-      if (Object.keys(payload.justificativas).length === 0) {
-        delete payload.justificativas;
-      }
-
-      // usa sua função existente (se já tem) ou seta campo a campo:
-      if (typeof applyPrefill === "function") {
-        applyPrefill(payload);
-      } else {
-        // fallback: set by name
-        const setVal = (name, val) => {
-          const el = document.querySelector(`[name="${name}"]`);
-          if (!el) return;
-          if (el.type === "datetime-local" && typeof val === "string") el.value = val.slice(0, 16);
-          else el.value = val ?? "";
-        };
-        // implemente conforme necessário
-      }
-
-      addBubble("bot", "Pronto. Apliquei os dados no formulário. Agora você pode revisar e gerar o documento.");
-      m.modal.style.display = "none";
-
-      // vai para um passo útil (motivo/justificativas)
-      const downloadModal = document.getElementById("downloadModal");
-      const downloadClose = document.getElementById("downloadClose");
-      const downloadSummary = document.getElementById("downloadSummary");
-      const btnReviewForm = document.getElementById("btnReviewForm");
-      const btnDownloadDOCX = document.getElementById("btnDownloadDOCX");
-      const btnDownloadPDF = document.getElementById("btnDownloadPDF");
-
-      downloadClose.addEventListener("click", () => downloadModal.style.display = "none");
-
+    if (btnReviewForm) {
       btnReviewForm.addEventListener("click", () => {
         downloadModal.style.display = "none";
-        // se quiser ir para uma etapa específica:
-        gotoStep(0);
+        gotoStep(1);
+      });
+    }
+
+    function openDownloadModal(payload) {
+      const cpf = payload?.servidor?.cpf || "";
+      const cpfMask = cpf && cpf.length === 11 ? (cpf.slice(0, 3) + "***" + cpf.slice(-2)) : "—";
+      const fmtDT = (v) => formatDateTimeBR(v) || "—";
+      const idaLines = formatTrechosLines(payload?.trechos?.ida, fmtDT);
+      const retLines = formatTrechosLines(payload?.trechos?.retorno, fmtDT);
+      const esc = (s) => {
+        if (s == null) return "";
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      };
+      downloadSummary.innerHTML =
+        `<div style="font-size:calc(var(--fs-md)*var(--font-scale));color:var(--text);line-height:1.5;">` +
+        `<strong style="color:var(--accent);">Servidor:</strong> ${esc(payload?.servidor?.nome_completo || "—")}<br>` +
+        `<strong style="color:var(--accent);">CPF:</strong> ${esc(cpfMask)}<br>` +
+        `<strong style="color:var(--accent);">SIAPE:</strong> ${esc(payload?.servidor?.siape || "—")}` +
+        `</div>` +
+        `<hr style="border:none;border-top:1px solid var(--border);margin:6px 0;">` +
+        `<div style="font-size:calc(var(--fs-sm)*var(--font-scale));color:var(--muted);line-height:1.5;">` +
+        `<div style="margin-bottom:4px;"><strong style="color:var(--accent);">Ida:</strong><br>${idaLines.map(l => esc(l)).join("<br>") || "—"}</div>` +
+        `<div><strong style="color:var(--accent);">Retorno:</strong><br>${retLines.map(l => esc(l)).join("<br>") || "—"}</div>` +
+        `</div>`;
+
+      downloadModal.style.display = "block";
+    }
+
+    async function downloadAnexo1(format, payload) {
+      const url = `/api/anexo1/generate?format=${encodeURIComponent(format)}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
 
-      function openDownloadModal(payload) {
-        // resumo simples (mascara CPF)
-        const cpf = payload?.servidor?.cpf || "";
-        const cpfMask = cpf && cpf.length === 11 ? (cpf.slice(0, 3) + "***" + cpf.slice(-2)) : "—";
-        const fmtDT = (v) => formatDateTimeBR(v) || "—";
-        const idaLines = formatTrechosLines(payload?.trechos?.ida, fmtDT);
-        const retLines = formatTrechosLines(payload?.trechos?.retorno, fmtDT);
-        downloadSummary.textContent =
-          `Servidor: ${payload?.servidor?.nome_completo || "—"} | CPF: ${cpfMask}\n` +
-          `Ida:\n${idaLines.map(l => "  " + l).join("\n")}\n` +
-          `Retorno:\n${retLines.map(l => "  " + l).join("\n")}`;
-
-        downloadModal.style.display = "block";
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert("Falha ao gerar o documento. " + txt);
+        return;
       }
 
-      // Esta função deve chamar seu backend e baixar arquivo
-      async function downloadAnexo1(format, payload) {
-        // Ajuste o endpoint conforme o seu backend atual.
-        // Opção A (com query): POST /api/anexo1/generate?format=pdf|docx
-        // Opção B (no body): POST /api/anexo1/generate  {format, payload}
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      const objUrl = URL.createObjectURL(blob);
+      a.href = objUrl;
+      a.download = (format === "pdf") ? "anexo1.pdf" : "anexo1.docx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    }
 
-        const url = `/api/anexo1/generate?format=${encodeURIComponent(format)}`;
-
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          alert("Falha ao gerar o documento. " + txt);
-          return;
-        }
-
-        // se o backend devolver arquivo (blob):
-        const blob = await res.blob();
-        const a = document.createElement("a");
-        const objUrl = URL.createObjectURL(blob);
-        a.href = objUrl;
-        a.download = (format === "pdf") ? "anexo1.pdf" : "anexo1.docx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(objUrl);
-      }
-
+    if (btnDownloadDOCX) {
       btnDownloadDOCX.addEventListener("click", async () => {
         const payload = window.__lastChatPayloadAnexo1;
         if (!payload) { alert("Sem dados para gerar. Rode o assistente novamente."); return; }
         await downloadAnexo1("docx", payload);
       });
+    }
 
+    if (btnDownloadPDF) {
       btnDownloadPDF.addEventListener("click", async () => {
         const payload = window.__lastChatPayloadAnexo1;
         if (!payload) { alert("Sem dados para gerar. Rode o assistente novamente."); return; }
         await downloadAnexo1("pdf", payload);
       });
-
-
     }
 
     function buildPayloadFromChatFull() {
@@ -1996,9 +2078,20 @@ function applyPayloadToFormByName(payload) {
             banco: d.servidor.dados_bancarios.banco,
             agencia: d.servidor.dados_bancarios.agencia,
             conta: d.servidor.dados_bancarios.conta
-          }
+          },
+          tipo_vinculo: d.servidor.tipo_vinculo || "servidor",
+          vinculo_outro_especificar: d.servidor.vinculo_outro_especificar || null,
+          passaporte: d.servidor.passaporte || null,
+          lotacao_orgao: d.servidor.lotacao_orgao || null,
+          auxilio_transporte: d.servidor.auxilio_transporte?.recebe
+            ? { recebe: true, valor: d.servidor.auxilio_transporte.valor || "" }
+            : { recebe: false, valor: null },
+          auxilio_alimentacao: d.servidor.auxilio_alimentacao?.recebe
+            ? { recebe: true, valor: d.servidor.auxilio_alimentacao.valor || "" }
+            : { recebe: false, valor: null }
         },
         motivo_viagem: d.motivo_viagem,
+        relacao_pertinencia: d.relacao_pertinencia || null,
         trechos: {
           ida: d.trechos.ida.map(t => ({
             origem: t.origem,
@@ -2027,18 +2120,22 @@ function applyPayloadToFormByName(payload) {
         }
       };
 
-      // justificativas só se necessário
-      if (payload.flags.envolve_fds_feriado_ou_dia_anterior || payload.flags.fora_do_prazo) {
-        payload.justificativas = {};
-        if (payload.flags.envolve_fds_feriado_ou_dia_anterior) {
-          payload.justificativas.justificativa_fds_feriado_dia_anterior =
-            d.justificativas.justificativa_fds_feriado_dia_anterior || "";
-        }
-        if (payload.flags.fora_do_prazo) {
-          payload.justificativas.justificativa_fora_prazo =
-            d.justificativas.justificativa_fora_prazo || "";
-        }
+      // justificativas
+      payload.justificativas = {};
+      if (payload.flags.envolve_fds_feriado_ou_dia_anterior) {
+        payload.justificativas.justificativa_fds_feriado_dia_anterior =
+          d.justificativas.justificativa_fds_feriado_dia_anterior || "";
       }
+      if (payload.flags.fora_do_prazo) {
+        payload.justificativas.justificativa_fora_prazo =
+          d.justificativas.justificativa_fora_prazo || "";
+      }
+      if (d.justificativas.just_viagem_urgente) payload.justificativas.just_viagem_urgente = d.justificativas.just_viagem_urgente;
+      if (d.justificativas.just_aeroporto) payload.justificativas.just_aeroporto = d.justificativas.just_aeroporto;
+      if (d.justificativas.just_grupo_mais_2) payload.justificativas.just_grupo_mais_2 = d.justificativas.just_grupo_mais_2;
+      if (d.justificativas.just_grupo_mais_5) payload.justificativas.just_grupo_mais_5 = d.justificativas.just_grupo_mais_5;
+      if (d.justificativas.just_mais_30_diarias) payload.justificativas.just_mais_30_diarias = d.justificativas.just_mais_30_diarias;
+      if (Object.keys(payload.justificativas).length === 0) delete payload.justificativas;
 
       return payload;
     }
@@ -2048,23 +2145,36 @@ function applyPayloadToFormByName(payload) {
     m.open.addEventListener("click", () => {
       m.tl.innerHTML = "";
       chatFull.state = "start";
-      // reset data
       chatFull.data = JSON.parse(JSON.stringify({
         tipo_solicitacao: null,
         data_solicitacao: null,
         servidor: {
           nome_completo: null, cargo_funcao: null, cpf: null, rg: null, data_nascimento: null,
           siape: null, nome_mae: null, endereco: null, telefone: null, email: null,
-          dados_bancarios: { banco: null, agencia: null, conta: null }
+          dados_bancarios: { banco: null, agencia: null, conta: null },
+          tipo_vinculo: null, vinculo_outro_especificar: null, passaporte: null, lotacao_orgao: null,
+          auxilio_transporte: { recebe: false, valor: null },
+          auxilio_alimentacao: { recebe: false, valor: null }
         },
         motivo_viagem: null,
-        trechos: { ida: { origem: null, destino: null, data_hora: null }, retorno: { origem: null, destino: null, data_hora: null } },
+        relacao_pertinencia: null,
+        trechos: { ida: [], retorno: [] },
         missao: { inicio_data_hora: null, termino_data_hora: null },
         debito_recurso: { tipo: null, detalhe: null },
         transporte: { meios: [], termo_veiculo_proprio_ciente: null },
         flags: { envolve_fds_feriado_ou_dia_anterior: false, fora_do_prazo: false },
-        justificativas: { justificativa_fds_feriado_dia_anterior: null, justificativa_fora_prazo: null },
-        _manual_feriado_dia_anterior: false
+        justificativas: {
+          justificativa_fds_feriado_dia_anterior: null, justificativa_fora_prazo: null,
+          just_viagem_urgente: null, just_aeroporto: null, just_grupo_mais_2: null,
+          just_grupo_mais_5: null, just_mais_30_diarias: null
+        },
+        _manual_feriado_dia_anterior: false,
+        _motivo_modelo: null,
+        _justificativas_extras: [],
+        _just_extra_idx: 0,
+        _chat_trecho_type: "ida",
+        _chat_trecho_idx: 0,
+        _chat_temp_cidade: null
       }));
 
       m.modal.style.display = "block";
@@ -2077,7 +2187,6 @@ function applyPayloadToFormByName(payload) {
     (function () {
       const oldAsk = ask;
       ask = function () {
-        // decide modo pelo estado
         const s = chatFull.state;
         if (
           s === "start" ||
@@ -2087,11 +2196,23 @@ function applyPayloadToFormByName(payload) {
           s === "transporte.meios" ||
           s === "transporte.termo" ||
           s === "flags.check" ||
-          s === "summary"
+          s === "trechos.ida.mais" ||
+          s === "trechos.retorno.mais" ||
+          s === "summary" ||
+          s === "servidor.tipo_vinculo" ||
+          s === "servidor.auxilio_transporte" ||
+          s === "servidor.auxilio_alimentacao" ||
+          s === "justificativas.extras"
         ) setMode("quick");
         else if (
           s === "data_solicitacao" || s === "servidor.data_nascimento"
         ) setMode("date");
+        else if (
+          s === "trechos.ida.data_hora" ||
+          s === "trechos.retorno.data_hora" ||
+          s === "missao.inicio_data_hora" ||
+          s === "missao.termino_data_hora"
+        ) setMode("datetime");
         else setMode("text");
 
         oldAsk();
@@ -2133,8 +2254,42 @@ function applyPayloadToFormByName(payload) {
 
     chkVeicProprio.addEventListener("change", () => {
       termoWrap.style.display = chkVeicProprio.checked ? "block" : "none";
-      if (!chkVeicProprio.checked) document.getElementById("termoCiente").checked = false;
+      const distWrap = document.getElementById("distanciaWrap");
+      if (distWrap) distWrap.style.display = chkVeicProprio.checked ? "block" : "none";
+      if (!chkVeicProprio.checked) {
+        document.getElementById("termoCiente").checked = false;
+        const distKm = document.querySelector('[name="transporte.distancia_km"]');
+        if (distKm) distKm.value = "";
+      }
     });
+
+    // Tipo de vínculo
+    const tipoVinculoEl = document.getElementById("tipo_vinculo");
+    const vinculoOutroWrap = document.getElementById("vinculo_outro_wrap");
+    const auxTranspWrap = document.getElementById("auxilio_transporte_wrap");
+    const auxAlimWrap = document.getElementById("auxilio_alimentacao_wrap");
+    if (tipoVinculoEl) {
+      tipoVinculoEl.addEventListener("change", () => {
+        const val = tipoVinculoEl.value;
+        if (vinculoOutroWrap) vinculoOutroWrap.style.display = (val === "outro") ? "block" : "none";
+        if (auxTranspWrap) auxTranspWrap.style.display = (val === "sepe") ? "block" : "none";
+        if (auxAlimWrap) auxAlimWrap.style.display = (val === "sepe") ? "block" : "none";
+        if (val !== "outro") {
+          const vo = document.querySelector('[name="servidor.vinculo_outro_especificar"]');
+          if (vo) vo.value = "";
+        }
+        if (val !== "sepe") {
+          const at = document.querySelector('[name="servidor.auxilio_transporte.recebe"]');
+          const av = document.querySelector('[name="servidor.auxilio_transporte.valor"]');
+          const aa = document.querySelector('[name="servidor.auxilio_alimentacao.recebe"]');
+          const av2 = document.querySelector('[name="servidor.auxilio_alimentacao.valor"]');
+          if (at) at.checked = false;
+          if (av) av.value = "";
+          if (aa) aa.checked = false;
+          if (av2) av2.value = "";
+        }
+      });
+    }
 
     flagFdsEl.addEventListener("change", () => {
       wrapJustFds.style.display = flagFdsEl.checked ? "block" : "none";
@@ -2308,10 +2463,10 @@ function applyPayloadToFormByName(payload) {
       const ret = normalizeTrechoList(p.trechos?.retorno || []);
 
       const idaText = ida.length
-        ? ida.map((t, i) => `trecho ${i + 1}: ${t.origem || '??'} → ${t.destino || '??'} em ${fmtDT(t.data_hora)}`).join('; ')
+        ? ida.map((t, i) => `trecho ${i + 1}: saindo de ${t.origem || '??'} com destino a ${t.destino || '??'} em ${fmtDT(t.data_hora)}`).join('; ')
         : 'não informado';
       const retText = ret.length
-        ? ret.map((t, i) => `trecho ${i + 1}: ${t.origem || '??'} → ${t.destino || '??'} em ${fmtDT(t.data_hora)}`).join('; ')
+        ? ret.map((t, i) => `trecho ${i + 1}: saindo de ${t.origem || '??'} com destino a ${t.destino || '??'} em ${fmtDT(t.data_hora)}`).join('; ')
         : 'não informado';
       const missaoInicio = fmtDT(p.missao?.inicio_data_hora);
       const missaoTermino = fmtDT(p.missao?.termino_data_hora);
@@ -2340,46 +2495,161 @@ function applyPayloadToFormByName(payload) {
       const p = formToJSON();
       const fmtDate = (v) => formatDateBR(v) || "—";
       const fmtDT = (v) => formatDateTimeBR(v) || "—";
-      const idaLines = formatTrechosLines(p.trechos?.ida, fmtDT);
-      const retLines = formatTrechosLines(p.trechos?.retorno, fmtDT);
-      const resumo = [
-        "Resumo amigável:",
-        "",
-        `• Tipo de solicitação: ${formatSolicitacaoTipo(p.tipo_solicitacao)}; Data da solicitação: ${fmtDate(p.data_solicitacao)}`,
-        "",
-        "Servidor:",
-        `• Nome: ${p.servidor?.nome_completo || "—"}`,
-        `• Cargo/Função: ${p.servidor?.cargo_funcao || "—"}`,
-        `• CPF: ${p.servidor?.cpf || "—"}; SIAPE: ${p.servidor?.siape || "—"}; E-mail: ${p.servidor?.email || "—"}`,
-        "",
-        "Viagem:",
-        ...idaLines.map(l => `• ${l}`),
-        ...retLines.map(l => `• ${l}`),
-        "",
-        "Missão:",
-        `• Início: ${fmtDT(p.missao?.inicio_data_hora)}; Término: ${fmtDT(p.missao?.termino_data_hora)}`,
-        "",
-        "Motivo da viagem:",
-        `• ${p.motivo_viagem || "—"}`,
-        "",
-        "Recurso:",
-        `• Tipo: ${p.debito_recurso?.tipo || "—"}${p.debito_recurso?.detalhe ? `; Detalhe: ${p.debito_recurso.detalhe}` : ""}`,
-        "",
-        "Transporte:",
-        `• Meios: ${formatTransporteMeios(p.transporte?.meios)}`,
-        "",
-        "Justificativas:",
-        `• Fim de semana/feriado/dia anterior: ${p.flags?.envolve_fds_feriado_ou_dia_anterior ? "SIM" : "NÃO"}`,
-        `• Fora do prazo: ${p.flags?.fora_do_prazo ? "SIM" : "NÃO"}`,
-        `• Justificativa FDS: ${p.justificativas?.justificativa_fds_feriado_dia_anterior || "—"}`,
-        `• Justificativa prazo: ${p.justificativas?.justificativa_fora_prazo || "—"}`,
-        "",
-        "─".repeat(60),
-        "⚠ ATENÇÃO: CIENTE DA OBRIGATORIEDADE DE PROVIDENCIAR ASSINATURAS VIA SIPAC, GOV.BR OU MANUAL DO REQUISITANTE E DA CHEFIA IMEDIATA NO FORMULÁRIO.",
-        "─".repeat(60)
-      ].join("\n");
+      const esc = (s) => {
+        if (s == null) return "";
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      };
 
-      document.getElementById("reviewText").textContent = resumo;
+      const idaTrechos = normalizeTrechoList(p.trechos?.ida || []);
+      const retTrechos = normalizeTrechoList(p.trechos?.retorno || []);
+
+      const tipoSol = formatSolicitacaoTipo(p.tipo_solicitacao);
+      const dataSol = fmtDate(p.data_solicitacao);
+
+      const nome = p.servidor?.nome_completo || "—";
+      const cargo = p.servidor?.cargo_funcao || "—";
+      const cpf = p.servidor?.cpf || "—";
+      const rg = p.servidor?.rg || "—";
+      const nasc = fmtDate(p.servidor?.data_nascimento);
+      const siape = p.servidor?.siape || "—";
+      const mae = p.servidor?.nome_mae || "—";
+      const endereco = p.servidor?.endereco || "—";
+      const tel = p.servidor?.telefone || "—";
+      const email = p.servidor?.email || "—";
+      const banco = p.servidor?.dados_bancarios?.banco || "—";
+      const agencia = p.servidor?.dados_bancarios?.agencia || "—";
+      const conta = p.servidor?.dados_bancarios?.conta || "—";
+      const vinculo = p.servidor?.tipo_vinculo || "servidor";
+      const vinculoLabel = { servidor: "Servidor", nao_servidor: "Não Servidor", sepe: "SEPE", acompanhante_pcd: "Acompanhante PCD", outro: "Outro" }[vinculo] || vinculo;
+      const vinculoOutro = p.servidor?.vinculo_outro_especificar || "";
+      const passaporte = p.servidor?.passaporte || "";
+      const lotacao = p.servidor?.lotacao_orgao || "";
+      const auxTrans = p.servidor?.auxilio_transporte?.recebe ? `Sim (${p.servidor.auxilio_transporte.valor || ""})` : "Não";
+      const auxAlim = p.servidor?.auxilio_alimentacao?.recebe ? `Sim (${p.servidor.auxilio_alimentacao.valor || ""})` : "Não";
+
+      const missaoInicio = fmtDT(p.missao?.inicio_data_hora);
+      const missaoTermino = fmtDT(p.missao?.termino_data_hora);
+
+      const recursoTipo = p.debito_recurso?.tipo || "—";
+      const recursoDetalhe = p.debito_recurso?.detalhe || "";
+
+      const meios = formatTransporteMeios(p.transporte?.meios);
+      const distKm = p.transporte?.distancia_km || "";
+      const termoCiente = p.transporte?.termo_veiculo_proprio_ciente ? "Ciente" : "";
+
+      const fds = p.flags?.envolve_fds_feriado_ou_dia_anterior;
+      const foraPrazo = p.flags?.fora_do_prazo;
+      const justFds = p.justificativas?.justificativa_fds_feriado_dia_anterior || "";
+      const justPrazo = p.justificativas?.justificativa_fora_prazo || "";
+      const justUrgente = p.justificativas?.just_viagem_urgente || "";
+      const justAeroporto = p.justificativas?.just_aeroporto || "";
+      const justG2 = p.justificativas?.just_grupo_mais_2 || "";
+      const justG5 = p.justificativas?.just_grupo_mais_5 || "";
+      const just30 = p.justificativas?.just_mais_30_diarias || "";
+      const pertinencia = p.relacao_pertinencia || "";
+
+      const buildTimeline = (list) => {
+        if (!list.length) return `<div class="review-empty">Nenhum trecho informado</div>`;
+        return `<div class="review-timeline">` +
+          list.map((t, i) => `
+            <div class="review-timeline-item">
+              <div class="review-timeline-dot"></div>
+              <div>
+                <div class="review-timeline-content">${esc(t.origem || "—")} <span style="color:var(--subtle)">→</span> ${esc(t.destino || "—")}</div>
+                <div class="review-timeline-meta">${esc(fmtDT(t.data_hora))}</div>
+              </div>
+            </div>`).join("") +
+          `</div>`;
+      };
+
+      const statusBadge = foraPrazo
+        ? `<span class="review-status danger">Fora do prazo</span>`
+        : `<span class="review-status ok">Dentro do prazo</span>`;
+
+      const html = `
+        <div class="review-wrap">
+          <div class="review-section">
+            <div class="review-header-row">
+              <div class="review-section-title"><span class="icon">📋</span> Solicitação</div>
+              ${statusBadge}
+            </div>
+            <div class="review-grid three">
+              <div class="review-row"><span class="review-label">Tipo</span><span class="review-value">${esc(tipoSol)}</span></div>
+              <div class="review-row"><span class="review-label">Data da solicitação</span><span class="review-value">${esc(dataSol)}</span></div>
+              <div class="review-row"><span class="review-label">Status</span><span class="review-value">${foraPrazo ? "Fora do prazo" : "Dentro do prazo"}</span></div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <div class="review-section-title"><span class="icon">👤</span> Servidor</div>
+            <div class="review-grid">
+              <div class="review-row"><span class="review-label">Nome</span><span class="review-value">${esc(nome)}</span></div>
+              <div class="review-row"><span class="review-label">Cargo/Função</span><span class="review-value">${esc(cargo)}</span></div>
+              <div class="review-row"><span class="review-label">CPF</span><span class="review-value">${esc(cpf)}</span></div>
+              <div class="review-row"><span class="review-label">SIAPE</span><span class="review-value">${esc(siape)}</span></div>
+              <div class="review-row"><span class="review-label">Vínculo</span><span class="review-value">${esc(vinculoLabel)}${vinculoOutro ? ` — ${esc(vinculoOutro)}` : ""}</span></div>
+              <div class="review-row"><span class="review-label">Telefone</span><span class="review-value">${esc(tel)}</span></div>
+              <div class="review-row full"><span class="review-label">E-mail</span><span class="review-value">${esc(email)}</span></div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <div class="review-section-title"><span class="icon">✈️</span> Trechos de Viagem</div>
+            <div class="review-grid">
+              <div class="review-row full">
+                <span class="review-label">Ida</span>
+                ${buildTimeline(idaTrechos)}
+              </div>
+              <div class="review-row full">
+                <span class="review-label">Retorno</span>
+                ${buildTimeline(retTrechos)}
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <div class="review-grid three">
+              <div class="review-row"><span class="review-label">Início da missão</span><span class="review-value">${esc(missaoInicio)}</span></div>
+              <div class="review-row"><span class="review-label">Término da missão</span><span class="review-value">${esc(missaoTermino)}</span></div>
+              <div class="review-row"><span class="review-label">Meio de transporte</span><span class="review-value">${esc(meios)}</span></div>
+            </div>
+            <hr class="review-divider">
+            <div class="review-label" style="margin-bottom:2px;">Motivo da viagem</div>
+            <div class="review-value pre">${esc(p.motivo_viagem || "—")}</div>
+            ${pertinencia ? `<hr class="review-divider"><div class="review-label" style="margin-bottom:2px;">Relação de pertinência</div><div class="review-value pre">${esc(pertinencia)}</div>` : ""}
+          </div>
+
+          <div class="review-section">
+            <div class="review-section-title"><span class="icon">💰</span> Recurso e Condições</div>
+            <div class="review-grid">
+              <div class="review-row"><span class="review-label">Débito do recurso</span><span class="review-value">${esc(recursoTipo.toUpperCase())}${recursoDetalhe ? ` — ${esc(recursoDetalhe)}` : ""}</span></div>
+              ${distKm ? `<div class="review-row"><span class="review-label">Distância (km)</span><span class="review-value">${esc(distKm)}</span></div>` : ""}
+              ${termoCiente ? `<div class="review-row"><span class="review-label">Termo veículo próprio</span><span class="review-value">${esc(termoCiente)}</span></div>` : ""}
+              <div class="review-row"><span class="review-label">FDS/feriado/dia anterior</span><span class="review-value">${fds ? "Sim" : "Não"}</span></div>
+              <div class="review-row"><span class="review-label">Fora do prazo</span><span class="review-value">${foraPrazo ? "Sim" : "Não"}</span></div>
+            </div>
+            ${justFds || justPrazo || justUrgente || justAeroporto || justG2 || justG5 || just30 ? `
+              <hr class="review-divider">
+              <div class="review-label" style="margin-bottom:2px;">Justificativas</div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${justFds ? `<div class="review-row full"><span class="review-label">FDS/feriado</span><div class="review-value pre">${esc(justFds)}</div></div>` : ""}
+                ${justPrazo ? `<div class="review-row full"><span class="review-label">Fora do prazo</span><div class="review-value pre">${esc(justPrazo)}</div></div>` : ""}
+                ${justUrgente ? `<div class="review-row full"><span class="review-label">Viagem urgente</span><div class="review-value pre">${esc(justUrgente)}</div></div>` : ""}
+                ${justAeroporto ? `<div class="review-row full"><span class="review-label">Aeroporto</span><div class="review-value pre">${esc(justAeroporto)}</div></div>` : ""}
+                ${justG2 ? `<div class="review-row full"><span class="review-label">Grupo >2</span><div class="review-value pre">${esc(justG2)}</div></div>` : ""}
+                ${justG5 ? `<div class="review-row full"><span class="review-label">Grupo >5</span><div class="review-value pre">${esc(justG5)}</div></div>` : ""}
+                ${just30 ? `<div class="review-row full"><span class="review-label">>30 diárias</span><div class="review-value pre">${esc(just30)}</div></div>` : ""}
+              </div>
+            ` : ""}
+          </div>
+
+          <div class="review-alert">
+            <strong>⚠️ Atenção:</strong> É obrigatório providenciar as assinaturas do requisitante e da chefia imediata no formulário, podendo ser feitas via SIPAC, GOV.BR ou manualmente.
+          </div>
+        </div>
+      `;
+
+      document.getElementById("reviewText").innerHTML = html;
 
       const badge = document.getElementById("reviewBadge");
       if (p.flags?.fora_do_prazo) {
@@ -2467,7 +2737,7 @@ function applyPayloadToFormByName(payload) {
       showErrors(null);
       setStatus("Rascunho", "");
       const reviewText = document.getElementById("reviewText");
-      if (reviewText) reviewText.textContent = "";
+      if (reviewText) reviewText.innerHTML = "";
       const reviewBadge = document.getElementById("reviewBadge");
       if (reviewBadge) { reviewBadge.textContent = "—"; reviewBadge.className = "badge"; }
       const badgePrazo = document.getElementById("badgePrazo");

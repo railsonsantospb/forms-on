@@ -25,8 +25,13 @@ from app.services.pdf_convert import convert_docx_to_pdf
 
 app = FastAPI(title="UFPB Diárias Wizard")
 
+# Detecta se existe build do React
+FRONTEND_DIST = Path("frontend/dist")
+HAS_REACT_BUILD = (FRONTEND_DIST / "index.html").exists()
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+if not HAS_REACT_BUILD:
+    # Fallback: serve o frontend antigo (vanilla JS)
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 WEB_DIR = Path("app/web")
 
@@ -66,14 +71,20 @@ def _load_draft(draft_id: str) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 def home():
+    if HAS_REACT_BUILD:
+        return (FRONTEND_DIST / "index.html").read_text(encoding="utf-8")
     return _load_html("index.html")
 
 @app.get("/anexo1", response_class=HTMLResponse)
 def anexo1_page():
+    if HAS_REACT_BUILD:
+        return (FRONTEND_DIST / "index.html").read_text(encoding="utf-8")
     return _load_html("anexo1.html")
 
 @app.get("/anexo2", response_class=HTMLResponse)
 def anexo2_page():
+    if HAS_REACT_BUILD:
+        return (FRONTEND_DIST / "index.html").read_text(encoding="utf-8")
     return _load_html("anexo2.html")
 
 @app.post("/api/drafts")
@@ -186,7 +197,14 @@ def generate_anexo1(payload: dict, format: Literal["docx", "pdf"] = Query("docx"
     with NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
         out_docx = Path(tmp_docx.name)
 
-    render_docx_from_template(template, out_docx, enriched["placeholders"], rows=enriched.get("rows"))
+    render_docx_from_template(
+        template,
+        out_docx,
+        enriched["placeholders"],
+        rows=enriched.get("rows"),
+        atividades_rows=enriched.get("atividades_rows"),
+        alteracoes_rows=enriched.get("alteracoes_rows"),
+    )
 
     def cleanup(files: list[Path]):
         for f in files:
@@ -223,7 +241,14 @@ def generate_anexo2(payload: dict, format: Literal["docx", "pdf"] = Query("docx"
     with NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
         out_docx = Path(tmp_docx.name)
 
-    render_docx_from_template(template, out_docx, enriched["placeholders"], rows=enriched.get("rows"))
+    render_docx_from_template(
+        template,
+        out_docx,
+        enriched["placeholders"],
+        rows=enriched.get("rows"),
+        atividades_rows=enriched.get("atividades_rows"),
+        alteracoes_rows=enriched.get("alteracoes_rows"),
+    )
 
     def cleanup(files: list[Path]):
         for f in files:
@@ -247,3 +272,13 @@ def generate_anexo2(payload: dict, format: Literal["docx", "pdf"] = Query("docx"
 @app.get("/review", response_class=HTMLResponse)
 def review_page():
     return _load_html("review.html")
+
+# ===== Catch-all para SPA React =====
+# Deve ser a ÚLTIMA rota. Serve arquivos estáticos do build ou index.html.
+if HAS_REACT_BUILD:
+    @app.get("/{full_path:path}")
+    def serve_react(full_path: str):
+        file_path = FRONTEND_DIST / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        return HTMLResponse(content=(FRONTEND_DIST / "index.html").read_text(encoding="utf-8"))
