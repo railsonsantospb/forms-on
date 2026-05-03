@@ -5,8 +5,11 @@ from pathlib import Path
 
 def convert_docx_to_pdf(docx_path: Path) -> Path:
     out_dir = docx_path.parent
+    # Perfil temporário do LibreOffice em /tmp (container read-only não permite ~/.config)
+    user_install = f"file:///tmp/libreoffice_profile_{docx_path.stem}"
     cmd = [
         "soffice",
+        "-env:UserInstallation=" + user_install,
         "--headless",
         "--nologo",
         "--nolockcheck",

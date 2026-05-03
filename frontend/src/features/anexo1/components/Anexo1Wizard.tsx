@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { ValidationErrorsModal } from '@/components/ui/modal'
 import { useAnexo1WizardStore } from '../store/useAnexo1WizardStore'
 import { WizardStepper } from '@/components/wizard/WizardStepper'
 import { WizardNavigation } from '@/components/wizard/WizardNavigation'
@@ -72,6 +73,7 @@ export function Anexo1Wizard() {
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward')
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [trechoModal, setTrechoModal] = useState<{ open: boolean; errors: string[] }>({ open: false, errors: [] })
+  const [validationModal, setValidationModal] = useState<{ open: boolean; errors: Array<{ field: string; message: string }> }>({ open: false, errors: [] })
 
   const data = store.formData
 
@@ -255,7 +257,11 @@ export function Anexo1Wizard() {
       if (trechoErrors.length > 0) {
         setTrechoModal({ open: true, errors: trechoErrors })
       } else {
-        toast.error('Corrija os erros antes de avançar')
+        const errors = Object.entries(currentErrors).map(([path, message]) => ({
+          field: getFieldLabel(path),
+          message,
+        }))
+        setValidationModal({ open: true, errors })
       }
     }
   }
@@ -267,20 +273,62 @@ export function Anexo1Wizard() {
 
   const handleGenerate = async (format: 'docx' | 'pdf') => {
     const payload = buildPayload()
-    const previewRes = await preview.mutateAsync(payload)
-    if (!previewRes.ok) {
-      toast.error('Há erros de validação. Corrija antes de gerar.')
+
+    // 1) Preview/validação no backend
+    let previewRes: { ok: boolean; errors?: Array<{ field: string; message: string }>; issues?: Array<{ field: string; message: string }> } | null = null
+    try {
+      previewRes = await preview.mutateAsync(payload)
+    } catch (err: unknown) {
+      // Se for erro 422 do validate_payload, o body pode conter os erros
+      if (err && typeof err === 'object' && 'status' in err && 'body' in err) {
+        const apiErr = err as { status: number; body: Record<string, unknown>; message: string }
+        const bodyErrors = Array.isArray(apiErr.body.errors)
+          ? (apiErr.body.errors as Array<{ field: string; message: string }>)
+          : Array.isArray(apiErr.body.issues)
+            ? (apiErr.body.issues as Array<{ field: string; message: string }>)
+            : []
+        setValidationModal({
+          open: true,
+          errors: bodyErrors.length > 0
+            ? bodyErrors.map((e) => ({ field: getFieldLabel(e.field), message: e.message }))
+            : [{ field: 'Erro de validação', message: apiErr.message }],
+        })
+      } else {
+        setValidationModal({
+          open: true,
+          errors: [{ field: 'Erro de conexão', message: err instanceof Error ? err.message : 'Não foi possível validar os dados. Tente novamente.' }],
+        })
+      }
       return
     }
-    const { blob, filename } = await generate.mutateAsync({ format, payload })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success(`Documento ${format.toUpperCase()} gerado com sucesso!`)
-    clear() // Limpa rascunho após gerar
+
+    if (!previewRes.ok) {
+      const rawErrors = previewRes.errors || previewRes.issues || []
+      const errors = rawErrors.map((issue) => ({
+        field: getFieldLabel(issue.field),
+        message: issue.message,
+      }))
+      setValidationModal({ open: true, errors })
+      return
+    }
+
+    // 2) Geração do documento
+    try {
+      const { blob, filename } = await generate.mutateAsync({ format, payload })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`Documento ${format.toUpperCase()} gerado com sucesso!`)
+      clear() // Limpa rascunho após gerar
+    } catch (err: unknown) {
+      setValidationModal({
+        open: true,
+        errors: [{ field: 'Erro na geração', message: err instanceof Error ? err.message : 'Não foi possível gerar o documento. Tente novamente.' }],
+      })
+    }
   }
 
   const handleImport = async (file: File) => {
@@ -748,6 +796,13 @@ export function Anexo1Wizard() {
         </div>
       )}
 
+      {/* Modal genérico de erros de validação */}
+      <ValidationErrorsModal
+        open={validationModal.open}
+        onClose={() => setValidationModal({ open: false, errors: [] })}
+        errors={validationModal.errors}
+      />
+
       {/* Chat button */}
       <button
         onClick={() => store.setChatOpen(true)}
@@ -774,6 +829,73 @@ function getStepPaths(step: number): string[] {
     8: ['flags', 'justificativas'],
   }
   return paths[step] || []
+}
+
+/* ===== Mapeamento de caminhos de erro para nomes amigáveis ===== */
+
+function getFieldLabel(path: string): string {
+  const FIELD_LABELS: Record<string, string> = {
+    'tipo_solicitacao': 'Tipo de solicitação',
+    'data_solicitacao': 'Data da solicitação',
+    'servidor.nome_completo': 'Nome completo',
+    'servidor.cargo_funcao': 'Cargo/Função',
+    'servidor.cpf': 'CPF',
+    'servidor.rg': 'RG',
+    'servidor.data_nascimento': 'Data de nascimento',
+    'servidor.siape': 'SIAPE',
+    'servidor.nome_mae': 'Nome da mãe',
+    'servidor.endereco': 'Endereço completo',
+    'servidor.telefone': 'Telefone',
+    'servidor.email': 'E-mail',
+    'servidor.tipo_vinculo': 'Tipo de vínculo',
+    'servidor.vinculo_outro_especificar': 'Especificar vínculo',
+    'servidor.dados_bancarios.banco': 'Banco',
+    'servidor.dados_bancarios.agencia': 'Agência',
+    'servidor.dados_bancarios.conta': 'Conta',
+    'servidor.passaporte': 'Passaporte',
+    'servidor.lotacao_orgao': 'Lotação/Órgão',
+    'servidor.auxilio_transporte.recebe': 'Recebe Auxílio Transporte',
+    'servidor.auxilio_transporte.valor': 'Valor do Auxílio Transporte',
+    'servidor.auxilio_alimentacao.recebe': 'Recebe Auxílio Alimentação',
+    'servidor.auxilio_alimentacao.valor': 'Valor do Auxílio Alimentação',
+    'missao.inicio_data_hora': 'Início da missão',
+    'missao.termino_data_hora': 'Término da missão',
+    'motivo_viagem': 'Motivo da viagem',
+    'relacao_pertinencia': 'Relação de pertinência',
+    'debito_recurso.tipo': 'Débito em recurso',
+    'debito_recurso.detalhe': 'Detalhe do recurso',
+    'transporte.meios': 'Meios de transporte',
+    'transporte.termo_veiculo_proprio_ciente': 'Termo de veículo próprio',
+    'transporte.distancia_km': 'Distância (km)',
+    'flags.envolve_fds_feriado_ou_dia_anterior': 'Envolve fim de semana/feriado',
+    'flags.fora_do_prazo': 'Fora do prazo',
+    'justificativas.justificativa_fora_prazo': 'Justificativa fora do prazo',
+    'justificativas.justificativa_fds_feriado_dia_anterior': 'Justificativa fim de semana/feriado',
+    'justificativas.just_viagem_urgente': 'Justificativa viagem urgente',
+    'justificativas.just_fds_feriado': 'Justificativa fim de semana/feriado (documento)',
+    'justificativas.just_aeroporto': 'Justificativa especificação de aeroporto',
+    'justificativas.just_grupo_mais_2': 'Justificativa grupo de mais de 2 pessoas',
+    'justificativas.just_grupo_mais_5': 'Justificativa grupo de mais de 5 pessoas',
+    'justificativas.just_mais_30_diarias': 'Justificativa mais de 30 diárias acumuladas',
+  }
+
+  // Verifica match exato primeiro
+  if (FIELD_LABELS[path]) return FIELD_LABELS[path]
+
+  // Tenta extrair índice de array para trechos: trechos.ida.0.origem
+  const trechoMatch = path.match(/^trechos\.(ida|retorno)\.(\d+)\.(origem|destino|data_hora)$/)
+  if (trechoMatch) {
+    const [, tipo, idx, campo] = trechoMatch
+    const tipoLabel = tipo === 'ida' ? 'Ida' : 'Retorno'
+    const campoLabel = campo === 'data_hora' ? 'Data e hora' : campo.charAt(0).toUpperCase() + campo.slice(1)
+    return `Trecho de ${tipoLabel} ${Number(idx) + 1} — ${campoLabel}`
+  }
+
+  // Fallback: retorna o próprio path formatado
+  return path
+    .replace(/\./g, ' › ')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 /* ===== Sub-components ===== */
