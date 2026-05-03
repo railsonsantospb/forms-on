@@ -111,9 +111,154 @@ O Forms On não utiliza modelos de linguagem generativos (como GPT-4, Claude ou 
 
 ---
 
-## 5. Segurança da informação: como os dados são protegidos
+## 5. Acessibilidade digital: inclusão por design
 
-### 5.1. Princípios gerais
+A acessibilidade digital é o conjunto de recursos que permitem que pessoas com deficiência visual, auditiva, motora, cognitiva ou neurológica possam usar sites, aplicativos e sistemas com autonomia. No Brasil, a acessibilidade não é apenas uma boa prática: é um **direito legal** garantido por lei.
+
+O Forms On foi construído sob o princípio da **"acessibilidade por design"** (accessibility by design): em vez de adaptar o sistema depois de pronto, as funcionalidades inclusivas foram planejadas desde o início do desenvolvimento. Isso significa que um servidor com baixa visão, um professor com dislexia, uma técnica com mobilidade reduzida ou um pesquisador com fotossensibilidade pode usar o sistema sem barreiras.
+
+### 5.1. Base legal da acessibilidade digital no Brasil
+
+A **Lei nº 13.146/2017** (Estatuto da Pessoa com Deficiência) estabelece no art. 8º que "é dever do Estado, da família, da comunidade, da sociedade em geral e das pessoas com deficiência [...] assegurar [...] a acessibilidade". No âmbito digital, a **Lei nº 10.098/2000** e o **Decreto nº 5.296/2004** regulamentam as normas de acessibilidade para pessoas com deficiência ou mobilidade reduzida.
+
+Já o **Decreto nº 7.724/2012** instituiu o **e-MAG** (Modelo de Acessibilidade em Governo Eletrônico), que define padrões obrigatórios para sites e sistemas da administração pública federal. O Forms On observa os princípios do e-MAG e as diretrizes internacionais **WCAG 2.1** (Web Content Accessibility Guidelines), publicadas pelo W3C (World Wide Web Consortium).
+
+> **Referência legal**: Art. 9º da **Lei nº 13.146/2017**; Art. 5º do **Decreto nº 5.296/2004**; **e-MAG 3.1** (IN DATAPREV/INSS nº 17/2011, atualizado).
+
+### 5.2. Painel de ferramentas de acessibilidade
+
+No canto superior direito da tela, ao lado dos botões de zoom, existe um ícone de **acessibilidade** (símbolo universal da pessoa em cadeira de rodas). Ao clicar, um painel deslizante exibe todas as opções de personalização. Essas configurações são salvas automaticamente no navegador do usuário, ou seja, ao retornar outro dia, as preferências continuam ativas.
+
+As ferramentas disponíveis são:
+
+#### 5.2.1. Ajuste de tamanho da fonte (zoom textual)
+
+Dois botões (`−` e `+`) permitem aumentar ou diminuir o tamanho de todas as letras do sistema, em degraus de 10%, variando de **70% (mínimo) a 150% (máximo)**. Diferente do zoom do navegador (que amplia imagens, botões e toda a interface), o zoom do Forms On amplia apenas o texto, preservando o layout e evitando barras de rolagem horizontais. Isso é especialmente útil para usuários com baixa visão ou presbiopia (dificuldade de enxergar de perto, comum após os 40 anos).
+
+O zoom atual é exibido em porcentagem (ex.: "120%") e é persistente: se o usuário fecha o navegador e retorna depois, o texto continua no tamanho escolhido.
+
+#### 5.2.2. Modo de contraste alto
+
+Ativa uma paleta de cores com **contraste máximo** entre texto e fundo (geralmente preto e branco ou amarelo e preto), eliminando tons intermediários. Essa função beneficia:
+- Pessoas com baixa visão ou degenerescência macular.
+- Pessoas com daltonismo (dificuldade em distinguir certas cores).
+- Usuários em ambientes com muita luz (glare), onde telas com pouco contraste ficam ilegíveis.
+
+#### 5.2.3. Escala de cinza
+
+Remove todas as cores da interface, convertendo-a em tons de cinza. Isso é útil para:
+- Pessoas com dislexia (alguns estudos indicam que cores muito vibrantes dificultam a leitura para disléxicos).
+- Pessoas com fotossensibilidade ou enxaqueca crônica (cores saturadas podem desencadear crises).
+- Usuários que preferem interfaces neutras por questões de concentração.
+
+#### 5.2.4. Redução de movimento
+
+Desativa todas as animações, transições e efeitos de movimento da interface. Isso é essencial para:
+- Pessoas com **vestibulopatias** (distúrbios do equilíbrio, como labirintite), para quem movimentos na tela podem causar tontura e náusea.
+- Pessoas com **epilepsia fotossensível**, que podem ter crises desencadeadas por mudanças bruscas de luz ou movimento.
+- Usuários que preferem interfaces estáticas por questões de foco e produtividade.
+
+> **Referência técnica**: Alinhado ao critério **WCAG 2.1 — 2.2.2 Pause, Stop, Hide** e **2.3.3 Animation from Interactions**.
+
+#### 5.2.5. Foco destacado
+
+Aumenta a espessura e a visibilidade do **contorno de foco** (aquela borda que aparece ao redor de um botão ou campo quando você navega com a tecla `Tab`). Por padrão, muitos sites utilizam contornos finos e claros, quase invisíveis. O modo "foco destacado" torna essa borda grossa e colorida, permitindo que usuários que navegam **apenas pelo teclado** (sem mouse) saibam exatamente onde estão na página.
+
+Isso beneficia:
+- Pessoas com **tremores** ou dificuldade motora que não conseguem usar o mouse com precisão.
+- Pessoas com **lesões medulares** ou paralisia que utilizam teclados adaptados.
+- Usuários avançados que preferem navegar com atalhos de teclado por velocidade.
+
+#### 5.2.6. Espaçamento entre linhas
+
+Oferece três níveis de espaçamento vertical entre as linhas de texto:
+- **Padrão**: espaçamento normal.
+- **Amplo**: aumenta o espaço entre as linhas.
+- **Máximo**: espaçamento generoso, ideal para leitura confortável.
+
+Isso beneficia pessoas com dislexia, disgrafia ou dificuldades de leitura, para quem textos muito compactos causam confusão visual (efeito de "letras dançando").
+
+#### 5.2.7. Espaçamento entre letras
+
+Oferece três níveis de espaçamento horizontal entre as letras de cada palavra:
+- **Padrão**: espaçamento normal.
+- **Amplo**: letras um pouco mais afastadas.
+- **Máximo**: letras bem espaçadas.
+
+Estudos em neurociência cognitiva demonstram que o aumento do espaçamento entre letras (letter spacing) melhora significativamente a velocidade de leitura e a compreensão em pessoas com dislexia. Essa funcionalidade coloca o Forms On alinhado às recomendações da **British Dyslexia Association**.
+
+> **Referência bibliográfica**: ZORZI, M. et al. Extra-large letter spacing improves reading in dyslexia. *Proceedings of the National Academy of Sciences*, v. 109, n. 28, p. 11455-11459, 2012.
+
+#### 5.2.8. Modo escuro e modo claro
+
+O usuário pode alternar entre tema claro (fundo branco, texto escuro) e tema escuro (fundo escuro, texto claro). Além do botão manual, o sistema detecta automaticamente a **preferência do sistema operacional** (`prefers-color-scheme`). Se o usuário configurou o Windows, macOS ou Linux para modo escuro, o Forms On abre automaticamente no tema escuro.
+
+O modo escuro beneficia:
+- Pessoas com **fotofobia** (sensibilidade à luz).
+- Usuários que trabalham à noite ou em ambientes com pouca luz.
+- Pessoas com astigmatismo (para quem fundos claros com texto fino causam "halos" ofuscantes).
+
+### 5.3. Navegação por teclado e leitores de tela
+
+Além das ferramentas visuais, o Forms On implementa recursos técnicos invisíveis — mas cruciais — para usuários que dependem de **teclado** ou **leitores de tela** (softwares que "lêem" a tela em voz alta, como NVDA, JAWS ou VoiceOver).
+
+#### 5.3.1. Skip link (link de pular)
+
+Ao pressionar a tecla `Tab` logo após carregar a página, o primeiro elemento focado é um link invisível que diz: **"Pular para o conteúdo principal"**. Ao pressionar `Enter`, o usuário salta diretamente para o formulário, ignorando o cabeçalho e a barra de navegação. Isso evita que usuários de teclado tenham que pressionar `Tab` dezenas de vezes para chegar ao conteúdo.
+
+> **Referência técnica**: WCAG 2.1 — **2.4.1 Bypass Blocks** (nível A).
+
+#### 5.3.2. Landmarks e regiões ARIA
+
+O código-fonte utiliza **landmarks semânticas** (regiões navegáveis) que permitem ao leitor de tela pular entre seções:
+- `<header>`: cabeçalho do site.
+- `<nav>`: menu de navegação.
+- `<main id="main-content">`: conteúdo principal do formulário.
+- `<footer role="contentinfo">`: rodapé com informações institucionais.
+
+Isso permite que um usuário de leitor de tela pressione uma tecla de atalho e pule diretamente para o formulário, o menu ou o rodapé.
+
+#### 5.3.3. Atributos ARIA
+
+ARIA (Accessible Rich Internet Applications) é uma especificação do W3C que adiciona informações semânticas a elementos HTML. O Forms On utiliza dezenas de atributos ARIA:
+- `aria-label`: descreve o propósito de botões e controles (ex.: "Diminuir fonte", "Aumentar fonte").
+- `aria-expanded` e `aria-controls`: indicam se o painel de acessibilidade está aberto ou fechado.
+- `role="switch"` e `aria-checked`: transformam botões em "chaves liga/desliga" acessíveis.
+- `aria-pressed`: indica qual opção está selecionada em controles segmentados.
+- `role="dialog"`: identifica o painel de acessibilidade como uma caixa de diálogo modal.
+
+#### 5.3.4. Tecla Escape para fechar painéis
+
+O painel de acessibilidade pode ser fechado tanto clicando fora dele quanto pressionando a tecla `Escape`. Isso segue o padrão de comportamento esperado por usuários de teclado e alinha-se às diretrizes de usabilidade.
+
+#### 5.3.5. Associação de rótulos (labels) a campos
+
+Todo campo de formulário possui um **rótulo (label)** associado programaticamente ao campo de entrada. Isso significa que, quando um leitor de tela foca no campo "Nome completo", ele anuncia: "Nome completo, obrigatório, campo de edição". Sem essa associação, o usuário não saberia o que digitar.
+
+Além disso, campos com erro de validação exibem uma mensagem descritiva (ex.: "CPF deve ter 11 dígitos") que também é anunciada pelo leitor de tela.
+
+### 5.4. Resumo das funcionalidades de acessibilidade
+
+| Funcionalidade | Quem beneficia | Base legal/técnica |
+|---|---|---|
+| Zoom textual (70%–150%) | Baixa visão, presbiopia | WCAG 2.1 — 1.4.4 Resize Text |
+| Contraste alto | Baixa visão, daltonismo | WCAG 2.1 — 1.4.3 Contrast (Minimum) |
+| Escala de cinza | Dislexia, fotossensibilidade | e-MAG — Recomendação 4.2 |
+| Redução de movimento | Vestibulopatias, epilepsia | WCAG 2.1 — 2.2.2; 2.3.3 |
+| Foco destacado | Mobilidade reduzida, navegação por teclado | WCAG 2.1 — 2.4.7 Focus Visible |
+| Espaçamento entre linhas | Dislexia, disgrafia | British Dyslexia Association |
+| Espaçamento entre letras | Dislexia | Zorzi et al., 2012 (PNAS) |
+| Modo escuro/claro | Fotofobia, astigmatismo | prefers-color-scheme (W3C) |
+| Skip link | Navegação por teclado | WCAG 2.1 — 2.4.1 Bypass Blocks |
+| Landmarks ARIA | Usuários de leitores de tela | WCAG 2.1 — 1.3.1 Info and Relationships |
+| Labels associados | Deficiência visual | WCAG 2.1 — 1.3.1; 3.3.1 Error Identification |
+| Persistência de preferências | Todos os usuários | UX best practices |
+
+---
+
+## 6. Segurança da informação: como os dados são protegidos
+
+### 6.1. Princípios gerais
 
 A segurança do Forms On foi projetada seguindo três princípios fundamentais da segurança da informação (confidencialidade, integridade e disponibilidade), conforme a **ISO/IEC 27001** (ABNT NBR ISO/IEC 27001:2022) e a **Lei 14.129/2021** (Estatuto da Segurança Cibernética):
 
@@ -121,9 +266,9 @@ A segurança do Forms On foi projetada seguindo três princípios fundamentais d
 - **Integridade**: os dados não podem ser alterados por pessoas não autorizadas.
 - **Disponibilidade**: o sistema deve estar acessível quando necessário.
 
-### 5.2. Camadas de proteção implementadas
+### 6.2. Camadas de proteção implementadas
 
-#### 5.2.1. Firewall de rede (UFW) e proxy reverso (nginx)
+#### 6.2.1. Firewall de rede (UFW) e proxy reverso (nginx)
 
 O sistema não está exposto diretamente à internet. Um firewall (UFW — Uncomplicated Firewall) bloqueia todas as portas, exceto:
 - Porta 22: acesso administrativo seguro (SSH).
@@ -132,13 +277,13 @@ O sistema não está exposto diretamente à internet. Um firewall (UFW — Uncom
 
 O nginx atua como "porteiro": recebe as conexões externas, termina o SSL/TLS (criptografia), e encaminha apenas para o sistema interno. Isso impede que atacantes acessem diretamente o banco de dados ou o código-fonte.
 
-#### 5.2.2. Criptografia em trânsito (TLS/SSL)
+#### 6.2.2. Criptografia em trânsito (TLS/SSL)
 
 Toda comunicação entre o navegador do usuário e o servidor é criptografada via **HTTPS** (TLS 1.2 ou superior), usando certificados emitidos pelo **Let's Encrypt** (Autoridade Certificadora gratuita reconhecida internacionalmente). Isso impede que terceiros interceptem dados pessoais (CPF, SIAPE, dados bancários) durante a transmissão.
 
 > **Referência legal**: Art. 46 da **Lei nº 13.709/2018** (LGPD) exige "o uso de técnicas de criptografia" para proteção de dados pessoais em trânsito.
 
-#### 5.2.3. Headers de segurança HTTP
+#### 6.2.3. Headers de segurança HTTP
 
 O sistema envia instruções ao navegador do usuário para reforçar a segurança:
 
@@ -148,7 +293,7 @@ O sistema envia instruções ao navegador do usuário para reforçar a seguranç
 - **Strict-Transport-Security (HSTS)**: força o navegador a sempre usar HTTPS, mesmo que o usuário digite "http://".
 - **Permissions-Policy**: desativa recursos do navegador desnecessários (câmera, microfone, geolocalização), reduzindo a superfície de ataque.
 
-#### 5.2.4. Proteção contra Path Traversal (travessia de diretórios)
+#### 6.2.4. Proteção contra Path Traversal (travessia de diretórios)
 
 Esta é uma vulnerabilidade crítica em que um atacante tenta acessar arquivos do sistema operacional (como `/etc/passwd`) manipulando a URL. O Forms On implementa três camadas de defesa:
 
@@ -156,7 +301,7 @@ Esta é uma vulnerabilidade crítica em que um atacante tenta acessar arquivos d
 2. O código-fonte sanitiza todo path, rejeitando qualquer requisição que contenha `..`.
 3. Uma verificação de `is_safe_path` garante que o arquivo solicitado está fisicamente dentro da pasta permitida.
 
-#### 5.2.5. Validação estruturada de dados (jsonschema)
+#### 6.2.5. Validação estruturada de dados (jsonschema)
 
 Todos os dados enviados pelos usuários passam por validação rigorosa contra schemas JSON formais. Isso significa que:
 - Campos desconhecidos são rejeitados (evita injeção de dados maliciosos).
@@ -167,7 +312,7 @@ Todos os dados enviados pelos usuários passam por validação rigorosa contra s
 
 > **Referência técnica**: Essa prática alinha-se com o **OWASP Top 10 2021**, categoria A03:2021 — *Injection* e A05:2021 — *Security Misconfiguration*.
 
-#### 5.2.6. Proteção de uploads de arquivos
+#### 6.2.6. Proteção de uploads de arquivos
 
 Quando o usuário envia um PDF ou DOCX para importação, o sistema valida:
 - **Extensão do arquivo**: apenas `.pdf`, `.docx` e `.doc` são aceitos.
@@ -177,11 +322,11 @@ Quando o usuário envia um PDF ou DOCX para importação, o sistema valida:
 
 > **Referência técnica**: Alinhado ao **OWASP Top 10 2021**, A01:2021 — *Broken Access Control*.
 
-#### 5.2.7. Rate Limiting (limitação de taxa de requisições)
+#### 6.2.7. Rate Limiting (limitação de taxa de requisições)
 
 Para evitar que um atacante sobrecarregue o sistema com milhares de requisições (ataque DDoS), o sistema limita quantas requisições cada IP pode fazer por minuto. Além disso, o rate limiter possui proteção contra "memory leak" (vazamento de memória), limpando automaticamente registros antigos.
 
-#### 5.2.8. Containerização segura (Docker)
+#### 6.2.8. Containerização segura (Docker)
 
 O sistema roda dentro de um container Docker com as seguintes restrições de segurança:
 - **Usuário não-root**: o processo não executa como administrador.
@@ -193,7 +338,7 @@ O sistema roda dentro de um container Docker com as seguintes restrições de se
 
 > **Referência técnica**: Alinhado à **NIST Cybersecurity Framework** (Função *Protect* — PR.IP-1) e à **ISO/IEC 27002:2022** (Controle 8.24 — *Use of Cryptography*; 8.28 — *Secure Coding*).
 
-#### 5.2.9. Criptografia local no navegador
+#### 6.2.9. Criptografia local no navegador
 
 O sistema utiliza a **Web Crypto API** (padrão nativo dos navegadores modernos) para criptografar os rascunhos armazenados no `localStorage` do navegador. A chave de criptografia é gerada automaticamente no dispositivo do usuário e nunca transmitida ao servidor. Isso garante que, mesmo que alguém tenha acesso físico ao computador, não consiga ler os dados dos formulários sem a chave.
 
@@ -203,9 +348,9 @@ Algoritmo utilizado: **AES-GCM-256**, reconhecido pelo **NIST** como padrão de 
 
 ---
 
-## 6. Normas e legislações observadas
+## 7. Normas e legislações observadas
 
-### 6.1. Normas brasileiras
+### 7.1. Normas brasileiras
 
 #### Lei nº 13.709/2018 — Lei Geral de Proteção de Dados (LGPD)
 A LGPD estabelece regras para coleta, armazenamento, tratamento e compartilhamento de dados pessoais no Brasil. O Forms On observa os seguintes princípios da LGPD:
@@ -237,7 +382,7 @@ Instrução Normativa do antigo Ministério do Planejamento (atual MGI) que esta
 - Proteção contra código malicioso (validação de uploads).
 - Continuidade de negócio ( Docker com healthchecks).
 
-### 6.2. Normas e padrões internacionais
+### 7.2. Normas e padrões internacionais
 
 #### ISO/IEC 27001:2022 — Sistemas de Gestão de Segurança da Informação
 Padrão internacional para gestão de segurança da informação. O Forms On implementa controles alinhados aos Anexos A da ISO 27001:2022:
@@ -298,7 +443,19 @@ BRASIL. **Lei nº 14.129, de 29 de março de 2021**. Estatuto da Segurança Cibe
 
 BRASIL. **Lei nº 14.133, de 1º de abril de 2021**. Lei de Licitações e Contratos Administrativos. Diário Oficial da União, Brasília, DF, 2 abr. 2021.
 
+BRASIL. **Lei nº 10.098, de 19 de dezembro de 2000**. Estabelece normas gerais e critérios básicos para a promoção da acessibilidade das pessoas com deficiência ou com mobilidade reduzida. Diário Oficial da União, Brasília, DF, 20 dez. 2000.
+
+BRASIL. **Lei nº 13.146, de 6 de julho de 2017**. Estatuto da Pessoa com Deficiência. Diário Oficial da União, Brasília, DF, 7 jul. 2017.
+
+BRASIL. **Decreto nº 5.296, de 2 de dezembro de 2004**. Regulamenta as Leis nº 10.048, de 8 de novembro de 2000, que dá prioridade de atendimento às pessoas com deficiência, e nº 10.098, de 19 de dezembro de 2000, que estabelece normas gerais e critérios básicos para a promoção da acessibilidade das pessoas com deficiência ou com mobilidade reduzida. Diário Oficial da União, Brasília, DF, 3 dez. 2004.
+
+BRASIL. **Decreto nº 7.724, de 16 de maio de 2012**. Regulamenta a Lei nº 12.527/2011 (Lei de Acesso à Informação) e institui o Modelo de Acessibilidade em Governo Eletrônico (e-MAG). Diário Oficial da União, Brasília, DF, 17 maio 2012.
+
 BRASIL. Ministério do Planejamento, Orçamento e Gestão. **Instrução Normativa SLTI/MPOG nº 01, de 19 de fevereiro de 2010**. Dispõe sobre as diretrizes para o desenvolvimento, aquisição e manutenção de sistemas de informação do Governo Federal. Diário Oficial da União, Brasília, DF, 22 fev. 2010.
+
+BRITISH DYSLEXIA ASSOCIATION. **Dyslexia Style Guide**. 3. ed. Bracknell: BDA, 2023. Disponível em: <https://www.bdadyslexia.org.uk/>. Acesso em: 3 maio 2026.
+
+NATIONAL INSTITUTE OF STANDARDS AND TECHNOLOGY. **Cybersecurity Framework Version 1.1**. Gaithersburg: NIST, 2018. Disponível em: <https://www.nist.gov/cyberframework>. Acesso em: 3 maio 2026.
 
 NATIONAL INSTITUTE OF STANDARDS AND TECHNOLOGY. **Cybersecurity Framework Version 1.1**. Gaithersburg: NIST, 2018. Disponível em: <https://www.nist.gov/cyberframework>. Acesso em: 3 maio 2026.
 
@@ -312,7 +469,15 @@ SCHNEIER, B. **Applied Cryptography: Protocols, Algorithms, and Source Code in C
 
 STALLINGS, W. **Cryptography and Network Security: Principles and Practice**. 8. ed. Boston: Pearson, 2020.
 
+W3C. **Web Content Accessibility Guidelines (WCAG) 2.1**. W3C Recommendation, 5 jun. 2018. Disponível em: <https://www.w3.org/TR/WCAG21/>. Acesso em: 3 maio 2026.
+
+W3C. **Accessible Rich Internet Applications (WAI-ARIA) 1.2**. W3C Recommendation, 6 jun. 2023. Disponível em: <https://www.w3.org/TR/wai-aria-1.2/>. Acesso em: 3 maio 2026.
+
+W3C. **Media Queries Level 5: prefers-color-scheme**. W3C Working Draft, 21 dez. 2021. Disponível em: <https://www.w3.org/TR/mediaqueries-5/#prefers-color-scheme>. Acesso em: 3 maio 2026.
+
 W3C. **Web Cryptography API**. W3C Recommendation, 17 jan. 2017. Disponível em: <https://www.w3.org/TR/WebCryptoAPI/>. Acesso em: 3 maio 2026.
+
+ZORZI, M. et al. Extra-large letter spacing improves reading in dyslexia. *Proceedings of the National Academy of Sciences*, v. 109, n. 28, p. 11455-11459, 2012.
 
 ---
 
