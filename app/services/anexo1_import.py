@@ -198,7 +198,7 @@ def _convert_to_pdf(path: Path) -> Path:
     tmpdir = Path(tempfile.mkdtemp())
     out_path = tmpdir / f"{path.stem}.pdf"
     cmd = ["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(tmpdir), str(path)]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
     if result.returncode != 0 or not out_path.exists():
         shutil.rmtree(tmpdir, ignore_errors=True)
         raise ValueError("Falha ao converter arquivo para PDF. Verifique se o DOC/DOCX está legível.")

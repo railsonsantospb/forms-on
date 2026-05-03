@@ -10,6 +10,7 @@ import {
   CalendarDays,
   ShieldCheck,
   Printer,
+  Lock,
 } from 'lucide-react'
 
 export function HomePage() {
@@ -99,6 +100,60 @@ export function HomePage() {
             title="Segurança e privacidade"
             text="Seus dados são processados localmente no navegador. Nenhuma informação pessoal é enviada para servidores externos."
           />
+        </div>
+      </section>
+
+      {/* Segurança e Proteção de Dados */}
+      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <ShieldCheck size={24} className="text-[var(--color-success)]" />
+          <h2 className="text-lg font-semibold">Segurança e Proteção de Dados</h2>
+        </div>
+
+        <div className="space-y-6 text-sm text-[var(--color-text)] leading-relaxed">
+          <div className="p-4 rounded-[var(--radius-md)] bg-[var(--color-btn-bg)] border border-[var(--color-border)]">
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <Lock size={16} className="text-[var(--color-accent)]" />
+              Como seus dados são protegidos
+            </h3>
+            <p className="text-[var(--color-muted)]">
+              Suas informações são tratadas com o mesmo cuidado que você teria com documentos importantes. 
+              O sistema funciona como uma "cofre digital" temporário: seus dados ficam guardados de forma segura 
+              enquanto você preenche o formulário e são automaticamente removidos em até 15 dias após o uso, 
+              mesmo que você esqueça de limpar o navegador.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <DataProtectionItem
+              title="Criptografia no navegador"
+              text="Seus dados são guardados no navegador usando tecnologia de criptografia avançada (AES-GCM), o mesmo padrão usado por bancos. Isso significa que mesmo alguém com acesso ao seu computador não conseguiria ler suas informações sem a chave de acesso."
+            />
+            <DataProtectionItem
+              title="Dados não compartilhados"
+              text="Nenhuma informação pessoal (como CPF, dados bancários ou endereço) é enviada para servidores externos. Tudo fica no seu computador durante o preenchimento e o documento gerado é baixado diretamente por você."
+            />
+            <DataProtectionItem
+              title="Sem rastreamento"
+              text="Não usamos cookies de publicidade, não vendemos dados e não compartilhamos informações com empresas. O único dado armazenado é um identificador anônimo para controle de limites de uso do sistema."
+            />
+            <DataProtectionItem
+              title="Você no controle"
+              text="A qualquer momento, você pode excluir seus dados clicando em 'Limpar tudo' no formulário ou removendo manualmente o histórico do navegador. Nenhuma informação fica retida permanentemente em nossos servidores."
+            />
+          </div>
+
+          <div className="p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-warning)]/5">
+            <h3 className="font-semibold mb-2 text-[var(--color-warning)]">
+              Importante: dados sensíveis
+            </h3>
+            <p className="text-[var(--color-muted)]">
+              Este sistema lida com informações pessoais (CPF, RG, dados bancários) que são protegidas 
+              pela Lei Geral de Proteção de Dados (LGPD). Tratamos essas informações com responsabilidade 
+              institucional e tecnologia de ponta para garantir que apenas você e os setores autorizados 
+              da UFPB tenham acesso aos documentos gerados.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -196,6 +251,21 @@ function InfoCard({
         <h3 className="text-sm font-semibold text-[var(--color-text)] mb-1">{title}</h3>
         <p className="text-sm text-[var(--color-muted)] leading-relaxed">{text}</p>
       </div>
+    </div>
+  )
+}
+
+function DataProtectionItem({
+  title,
+  text,
+}: {
+  title: string
+  text: string
+}) {
+  return (
+    <div className="flex flex-col gap-2 p-4 rounded-[var(--radius-md)] bg-[var(--color-btn-bg)] border border-[var(--color-border)]">
+      <h3 className="text-sm font-semibold text-[var(--color-text)]">{title}</h3>
+      <p className="text-sm text-[var(--color-muted)] leading-relaxed">{text}</p>
     </div>
   )
 }

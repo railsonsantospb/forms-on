@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout/Footer'
 import { HomePage } from '@/pages/HomePage'
 import { Anexo1Page } from '@/pages/Anexo1Page'
 import { Anexo2Page } from '@/pages/Anexo2Page'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/anexo1" element={<Anexo1Page />} />
             <Route path="/anexo2" element={<Anexo2Page />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
         <Footer />

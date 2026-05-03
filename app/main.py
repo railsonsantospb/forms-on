@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import json
 import uuid
+import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Literal, Optional
 from tempfile import NamedTemporaryFile
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile, Request
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
 from app.settings import settings
+from app.middleware.security import SecurityHeadersMiddleware, RequestSizeLimitMiddleware
+from app.middleware.rate_limit import rate_limit
 from app.services.anexo1_import import (
     extract_prefill_for_anexo1,
     extract_prefill_from_anexo1,
@@ -23,7 +26,16 @@ from app.services.docx_render import render_docx_from_template
 from app.services.pdf_convert import convert_docx_to_pdf
 
 
-app = FastAPI(title="UFPB Diárias Wizard")
+app = FastAPI(
+    title="UFPB Diárias Wizard",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+# Middlewares de segurança
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware)
 
 # Detecta se existe build do React
 FRONTEND_DIST = Path("frontend/dist")
@@ -35,8 +47,48 @@ if not HAS_REACT_BUILD:
 
 WEB_DIR = Path("app/web")
 
+# Constantes de segurança
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
+UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+
+
 def _load_html(name: str) -> str:
     return (WEB_DIR / name).read_text(encoding="utf-8")
+
+
+def _validate_uuid(draft_id: str) -> None:
+    """Valida se o draft_id é um UUID válido."""
+    if not UUID_PATTERN.match(draft_id):
+        raise HTTPException(400, "ID de rascunho inválido.")
+
+
+def _validate_file(file: UploadFile, content: bytes) -> None:
+    """Valida arquivo de upload."""
+    if not file.filename:
+        raise HTTPException(400, "Nome do arquivo não fornecido.")
+    
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(413, f"Arquivo muito grande. Limite: {MAX_FILE_SIZE // (1024*1024)}MB.")
+    
+    if len(content) == 0:
+        raise HTTPException(400, "Arquivo vazio.")
+    
+    suffix = Path(file.filename).suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Formato não suportado. Use: {', '.join(ALLOWED_EXTENSIONS)}.")
+    
+    # Validação adicional de MIME type
+    mime_type = file.content_type or ""
+    allowed_mimes = {
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "application/octet-stream",
+    }
+    if mime_type and mime_type not in allowed_mimes:
+        raise HTTPException(400, "Tipo de arquivo não permitido.")
+
 
 def _cleanup_old_data_files(days: int = 15) -> None:
     cutoff = datetime.now(timezone.utc).timestamp() - (days * 86400)
@@ -58,17 +110,60 @@ def _ensure_data_dir() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     _cleanup_old_data_files(15)
 
+
 def _save_draft(draft_id: str, payload: dict) -> None:
     _ensure_data_dir()
+    _validate_uuid(draft_id)
     fp = settings.data_dir / f"{draft_id}.json"
     fp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
+
 def _load_draft(draft_id: str) -> dict:
+    _validate_uuid(draft_id)
     fp = settings.data_dir / f"{draft_id}.json"
     if not fp.exists():
         raise HTTPException(404, "Rascunho não encontrado.")
     return json.loads(fp.read_text(encoding="utf-8"))
 
+
+# ===== Página 404 HTML =====
+def _load_404_html() -> str:
+    return (WEB_DIR / "404.html").read_text(encoding="utf-8")
+
+
+# ===== Handlers de erro globais =====
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # Para requisições web (navegador), retorna página HTML 404
+    accept_header = request.headers.get("accept", "")
+    is_browser_request = (
+        "text/html" in accept_header
+        and exc.status_code == 404
+        and not request.url.path.startswith("/api/")
+    )
+    
+    if is_browser_request:
+        return HTMLResponse(
+            content=_load_404_html(),
+            status_code=404,
+        )
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno do servidor."},
+    )
+
+
+# ===== Rotas =====
 @app.get("/", response_class=HTMLResponse)
 def home():
     if HAS_REACT_BUILD:
@@ -88,50 +183,48 @@ def anexo2_page():
     return _load_html("anexo2.html")
 
 @app.post("/api/drafts")
-def create_draft(kind: Literal["anexo1", "anexo2"]):
+@rate_limit(requests_per_minute=20)
+async def create_draft(request: Request, kind: Literal["anexo1", "anexo2"]):
     draft_id = str(uuid.uuid4())
     _save_draft(draft_id, {"kind": kind, "created_at": str(date.today()), "data": {}})
     return {"draft_id": draft_id}
 
 @app.get("/api/server-date")
-def server_date():
-    # data atual do servidor (YYYY-MM-DD) para preencher campos padrão no front
+async def server_date(request: Request):
     return {"date": str(date.today())}
 
 @app.get("/api/drafts/{draft_id}")
-def get_draft(draft_id: str):
+@rate_limit(requests_per_minute=60)
+async def get_draft(request: Request, draft_id: str):
     return _load_draft(draft_id)
 
 @app.patch("/api/drafts/{draft_id}")
-def patch_draft(draft_id: str, data: dict):
+@rate_limit(requests_per_minute=30)
+async def patch_draft(request: Request, draft_id: str, data: dict):
     draft = _load_draft(draft_id)
     draft["data"] = {**draft.get("data", {}), **data}
     _save_draft(draft_id, draft)
     return {"ok": True}
 
 @app.post("/api/anexo1/preview")
-def preview_anexo1(payload: dict):
+@rate_limit(requests_per_minute=30)
+async def preview_anexo1(request: Request, payload: dict):
     enriched = validate_and_enrich_anexo1(payload)
     return enriched
 
 @app.post("/api/anexo2/preview")
-def preview_anexo2(payload: dict):
+@rate_limit(requests_per_minute=30)
+async def preview_anexo2(request: Request, payload: dict):
     enriched = validate_and_enrich_anexo2(payload)
     return enriched
 
 
 @app.post("/api/anexo2/prefill-from-anexo1")
-async def prefill_anexo2_from_anexo1(file: UploadFile = File(...)):
-    if not file.filename:
-        raise HTTPException(400, "Envie o arquivo do Anexo I preenchido em PDF, DOC ou DOCX.")
-
-    suffix = Path(file.filename).suffix.lower()
-    if suffix not in (".pdf", ".docx", ".doc"):
-        raise HTTPException(400, "Formato não suportado. Use PDF, DOC ou DOCX do Anexo I.")
-
+@rate_limit(requests_per_minute=10)
+async def prefill_anexo2_from_anexo1(request: Request, file: UploadFile = File(...)):
     content = await file.read()
-    if not content:
-        raise HTTPException(400, "Arquivo vazio. Verifique se o Anexo I foi exportado corretamente.")
+    _validate_file(file, content)
+    suffix = Path(file.filename).suffix.lower() if file.filename else ".pdf"
 
     tmp_path = None
     try:
@@ -152,17 +245,11 @@ async def prefill_anexo2_from_anexo1(file: UploadFile = File(...)):
 
 
 @app.post("/api/anexo1/prefill-from-anexo1")
-async def prefill_anexo1_from_anexo1(file: UploadFile = File(...)):
-    if not file.filename:
-        raise HTTPException(400, "Envie o arquivo do Anexo I preenchido em PDF, DOC ou DOCX.")
-
-    suffix = Path(file.filename).suffix.lower()
-    if suffix not in (".pdf", ".docx", ".doc"):
-        raise HTTPException(400, "Formato não suportado. Use PDF, DOC ou DOCX do Anexo I.")
-
+@rate_limit(requests_per_minute=10)
+async def prefill_anexo1_from_anexo1(request: Request, file: UploadFile = File(...)):
     content = await file.read()
-    if not content:
-        raise HTTPException(400, "Arquivo vazio. Verifique se o Anexo I foi exportado corretamente.")
+    _validate_file(file, content)
+    suffix = Path(file.filename).suffix.lower() if file.filename else ".pdf"
 
     tmp_path = None
     try:
@@ -181,13 +268,23 @@ async def prefill_anexo1_from_anexo1(file: UploadFile = File(...)):
 
     return {"ok": True, "prefill": result.prefill, "warnings": result.warnings, "filename": file.filename}
 
+
+def _add_security_headers_to_file_response(response: FileResponse) -> FileResponse:
+    """Adiciona headers de segurança em FileResponse."""
+    if not response.headers:
+        response.headers = {}
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
+
+
 @app.post("/api/anexo1/generate")
-def generate_anexo1(payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+@rate_limit(requests_per_minute=10)
+async def generate_anexo1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
     _ensure_data_dir()
 
     enriched = validate_and_enrich_anexo1(payload)
     if not enriched.get("ok"):
-        # 422 Unprocessable Entity (erro de validação)
         raise HTTPException(status_code=422, detail=enriched)
 
     template = settings.templates_dir / "anexo1_template.docx"
@@ -211,23 +308,26 @@ def generate_anexo1(payload: dict, format: Literal["docx", "pdf"] = Query("docx"
             f.unlink(missing_ok=True)
 
     if format == "docx":
-        return FileResponse(
+        response = FileResponse(
             out_docx,
             filename="anexo1_preenchido.docx",
             background=BackgroundTask(cleanup, [out_docx]),
         )
+        return _add_security_headers_to_file_response(response)
 
     out_pdf = convert_docx_to_pdf(out_docx)
 
-    return FileResponse(
+    response = FileResponse(
         out_pdf,
         filename="anexo1_preenchido.pdf",
         background=BackgroundTask(cleanup, [out_docx, out_pdf]),
     )
+    return _add_security_headers_to_file_response(response)
 
 
 @app.post("/api/anexo2/generate")
-def generate_anexo2(payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+@rate_limit(requests_per_minute=10)
+async def generate_anexo2(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
     _ensure_data_dir()
 
     enriched = validate_and_enrich_anexo2(payload)
@@ -255,26 +355,35 @@ def generate_anexo2(payload: dict, format: Literal["docx", "pdf"] = Query("docx"
             f.unlink(missing_ok=True)
 
     if format == "docx":
-        return FileResponse(
+        response = FileResponse(
             out_docx,
             filename="anexo2_preenchido.docx",
             background=BackgroundTask(cleanup, [out_docx]),
         )
+        return _add_security_headers_to_file_response(response)
 
     out_pdf = convert_docx_to_pdf(out_docx)
 
-    return FileResponse(
+    response = FileResponse(
         out_pdf,
         filename="anexo2_preenchido.pdf",
         background=BackgroundTask(cleanup, [out_docx, out_pdf]),
     )
+    return _add_security_headers_to_file_response(response)
 
 @app.get("/review", response_class=HTMLResponse)
 def review_page():
     return _load_html("review.html")
 
-# ===== Catch-all para SPA React =====
-# Deve ser a ÚLTIMA rota. Serve arquivos estáticos do build ou index.html.
+# ===== Bloqueia rotas de documentação da API =====
+@app.get("/docs", include_in_schema=False)
+@app.get("/redoc", include_in_schema=False)
+@app.get("/openapi.json", include_in_schema=False)
+async def block_docs():
+    raise HTTPException(status_code=404, detail="Not Found")
+
+# ===== Catch-all para SPA React ou fallback 404 =====
+# Deve ser a ÚLTIMA rota.
 if HAS_REACT_BUILD:
     @app.get("/{full_path:path}")
     def serve_react(full_path: str):
@@ -282,3 +391,8 @@ if HAS_REACT_BUILD:
         if file_path.exists() and file_path.is_file():
             return FileResponse(str(file_path))
         return HTMLResponse(content=(FRONTEND_DIST / "index.html").read_text(encoding="utf-8"))
+else:
+    # Fallback vanilla: serve página 404 para rotas não encontradas
+    @app.get("/{full_path:path}")
+    def serve_404(full_path: str):
+        return HTMLResponse(content=_load_404_html(), status_code=404)

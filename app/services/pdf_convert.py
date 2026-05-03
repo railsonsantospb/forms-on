@@ -16,7 +16,7 @@ def convert_docx_to_pdf(docx_path: Path) -> Path:
         "--outdir", str(out_dir),
         str(docx_path),
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, timeout=30)
 
     pdf_path = out_dir / (docx_path.stem + ".pdf")
     if not pdf_path.exists():

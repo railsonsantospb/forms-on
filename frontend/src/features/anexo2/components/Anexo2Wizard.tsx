@@ -64,11 +64,14 @@ export function Anexo2Wizard() {
   useBeforeUnload(true)
 
   useEffect(() => {
-    const saved = restore()
-    if (saved) {
-      store.applyPayload(saved)
-      toast.info('Rascunho anterior restaurado do navegador')
+    const doRestore = async () => {
+      const saved = await restore()
+      if (saved) {
+        store.applyPayload(saved)
+        toast.info('Rascunho anterior restaurado do navegador')
+      }
     }
+    doRestore()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
