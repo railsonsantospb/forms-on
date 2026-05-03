@@ -455,10 +455,11 @@ if HAS_REACT_BUILD:
     @app.get("/{full_path:path}")
     def serve_react(full_path: str):
         # Sanitiza path para evitar path traversal (../etc/passwd)
-        safe_path = os.path.normpath(full_path).lstrip("/")
-        if safe_path.startswith("..") or "/../" in safe_path or "\\.." in safe_path:
+        # Rejeita imediatamente qualquer path que contenha '..' antes de normalizar
+        if ".." in full_path:
             return HTMLResponse(content=_load_404_html(), status_code=404)
 
+        safe_path = os.path.normpath(full_path).lstrip("/")
         file_path = FRONTEND_DIST / safe_path
         if file_path.exists() and file_path.is_file() and _is_safe_path(FRONTEND_DIST, file_path):
             response = FileResponse(str(file_path))
