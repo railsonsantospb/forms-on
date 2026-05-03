@@ -209,24 +209,22 @@ export function Anexo1Wizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, store.currentStep])
 
-  // Validação por step
-  const validateCurrentStep = useCallback((): boolean => {
+  // Validação por step — retorna boolean e os erros do step atual (síncrono)
+  const validateCurrentStep = useCallback((): { valid: boolean; currentErrors: Record<string, string> } => {
     const payload = buildPayload()
     const step = store.currentStep
-    let allErrors: Record<string, string> = {}
     let currentStepErrors: Record<string, string> = {}
 
     try {
       anexo1Schema.parse(payload)
       setStepErrors({})
-      return true
+      return { valid: true, currentErrors: {} }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'issues' in err) {
         const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
         const currentStepPaths = getStepPaths(step)
         for (const issue of issues) {
           const path = issue.path.join('.')
-          allErrors[path] = issue.message
           // Separa apenas os erros do step atual
           if (currentStepPaths.some((prefix) => path.startsWith(prefix))) {
             currentStepErrors[path] = issue.message
@@ -235,13 +233,13 @@ export function Anexo1Wizard() {
       }
       // Exibe apenas os erros do step atual na interface
       setStepErrors(currentStepErrors)
-      // Bloqueia avanço se houver erro no step atual
-      return Object.keys(currentStepErrors).length === 0
+      return { valid: Object.keys(currentStepErrors).length === 0, currentErrors: currentStepErrors }
     }
   }, [buildPayload, store.currentStep])
 
   const goNext = () => {
-    if (validateCurrentStep()) {
+    const { valid, currentErrors } = validateCurrentStep()
+    if (valid) {
       setDirection('forward')
       store.setStepValidation(store.currentStep, true)
       store.nextStep()
@@ -250,7 +248,7 @@ export function Anexo1Wizard() {
       // e há erros de trecho no step atual
       const isTrechoStep = store.currentStep === 3 || store.currentStep === 4
       const trechoErrors = isTrechoStep
-        ? Object.entries(stepErrors)
+        ? Object.entries(currentErrors)
             .filter(([path]) => path.startsWith('trechos.'))
             .map(([, message]) => message)
         : []
