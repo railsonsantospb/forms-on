@@ -181,9 +181,11 @@ export function Anexo1Wizard() {
   }, [data])
 
   // Limpa erros automaticamente quando o usuário corrige os campos
+  // Mantém apenas os erros do step atual para não poluir a interface com erros futuros
   useEffect(() => {
     if (store.currentStep >= 9) return
     const payload = buildPayload()
+    const currentPaths = getStepPaths(store.currentStep)
     try {
       anexo1Schema.parse(payload)
       setStepErrors((prev) => {
@@ -196,7 +198,10 @@ export function Anexo1Wizard() {
         const newErrors: Record<string, string> = {}
         for (const issue of issues) {
           const path = issue.path.join('.')
-          newErrors[path] = issue.message
+          // Só mostra erros do step atual
+          if (currentPaths.some((prefix) => path.startsWith(prefix))) {
+            newErrors[path] = issue.message
+          }
         }
         setStepErrors(newErrors)
       }
@@ -208,7 +213,8 @@ export function Anexo1Wizard() {
   const validateCurrentStep = useCallback((): boolean => {
     const payload = buildPayload()
     const step = store.currentStep
-    let errors: Record<string, string> = {}
+    let allErrors: Record<string, string> = {}
+    let currentStepErrors: Record<string, string> = {}
 
     try {
       anexo1Schema.parse(payload)
@@ -217,20 +223,20 @@ export function Anexo1Wizard() {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'issues' in err) {
         const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
-        // Filtra apenas os erros relevantes ao step atual
+        const currentStepPaths = getStepPaths(step)
         for (const issue of issues) {
           const path = issue.path.join('.')
-          errors[path] = issue.message
+          allErrors[path] = issue.message
+          // Separa apenas os erros do step atual
+          if (currentStepPaths.some((prefix) => path.startsWith(prefix))) {
+            currentStepErrors[path] = issue.message
+          }
         }
       }
-      setStepErrors(errors)
-
-      // Só bloqueia se o erro for do step atual
-      const currentStepPaths = getStepPaths(step)
-      const hasCurrentStepError = Object.keys(errors).some((path) =>
-        currentStepPaths.some((prefix) => path.startsWith(prefix)),
-      )
-      return !hasCurrentStepError
+      // Exibe apenas os erros do step atual na interface
+      setStepErrors(currentStepErrors)
+      // Bloqueia avanço se houver erro no step atual
+      return Object.keys(currentStepErrors).length === 0
     }
   }, [buildPayload, store.currentStep])
 
@@ -240,9 +246,14 @@ export function Anexo1Wizard() {
       store.setStepValidation(store.currentStep, true)
       store.nextStep()
     } else {
-      const trechoErrors = Object.entries(stepErrors)
-        .filter(([path]) => path.startsWith('trechos.'))
-        .map(([, message]) => message)
+      // Só mostra modal de trechos se o usuário está nos steps de trecho (3 ou 4)
+      // e há erros de trecho no step atual
+      const isTrechoStep = store.currentStep === 3 || store.currentStep === 4
+      const trechoErrors = isTrechoStep
+        ? Object.entries(stepErrors)
+            .filter(([path]) => path.startsWith('trechos.'))
+            .map(([, message]) => message)
+        : []
       if (trechoErrors.length > 0) {
         setTrechoModal({ open: true, errors: trechoErrors })
       } else {
