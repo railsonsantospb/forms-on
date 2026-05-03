@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 import re
 from datetime import date, datetime, timezone
@@ -16,6 +17,7 @@ from starlette.background import BackgroundTask
 from app.settings import settings
 from app.middleware.security import SecurityHeadersMiddleware, RequestSizeLimitMiddleware
 from app.middleware.rate_limit import rate_limit
+from app.schemas.validator import validate_payload, ValidationError
 from app.services.anexo1_import import (
     extract_prefill_for_anexo1,
     extract_prefill_from_anexo1,
@@ -51,6 +53,14 @@ WEB_DIR = Path("app/web")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+MAX_FILENAME_LEN = 255
+
+# Magic bytes para validação de arquivos
+MAGIC_BYTES = {
+    ".pdf": (b"%PDF",),
+    ".docx": (b"PK\x03\x04",),  # ZIP header (DOCX é um ZIP)
+    ".doc": (b"\xd0\xcf\x11\xe0", b"\x31\xbe\x00\x00\x00\x00"),  # OLE ou OLD Word
+}
 
 
 def _load_html(name: str) -> str:
@@ -61,6 +71,26 @@ def _validate_uuid(draft_id: str) -> None:
     """Valida se o draft_id é um UUID válido."""
     if not UUID_PATTERN.match(draft_id):
         raise HTTPException(400, "ID de rascunho inválido.")
+
+
+def _sanitize_filename(filename: str) -> str:
+    """Remove path separators e limita tamanho do filename."""
+    # Remove path traversal characters
+    sanitized = os.path.basename(filename).replace("..", "")
+    # Limita tamanho
+    if len(sanitized) > MAX_FILENAME_LEN:
+        name, ext = os.path.splitext(sanitized)
+        sanitized = name[:MAX_FILENAME_LEN - len(ext)] + ext
+    return sanitized
+
+
+def _validate_magic_bytes(content: bytes, suffix: str) -> None:
+    """Valida file signature (magic bytes) do arquivo."""
+    magics = MAGIC_BYTES.get(suffix)
+    if not magics:
+        return
+    if not any(content.startswith(m) for m in magics):
+        raise HTTPException(400, "Arquivo corrompido ou formato inválido (magic bytes mismatch).")
 
 
 def _validate_file(file: UploadFile, content: bytes) -> None:
@@ -77,6 +107,9 @@ def _validate_file(file: UploadFile, content: bytes) -> None:
     suffix = Path(file.filename).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Formato não suportado. Use: {', '.join(ALLOWED_EXTENSIONS)}.")
+    
+    # Validação de magic bytes (file signature)
+    _validate_magic_bytes(content, suffix)
     
     # Validação adicional de MIME type
     mime_type = file.content_type or ""
@@ -132,6 +165,14 @@ def _load_404_html() -> str:
 
 
 # ===== Handlers de erro globais =====
+@app.exception_handler(ValidationError)
+async def validation_error_handler(request: Request, exc: ValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Dados inválidos.", "errors": exc.errors},
+    )
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     # Para requisições web (navegador), retorna página HTML 404
@@ -202,6 +243,9 @@ async def get_draft(request: Request, draft_id: str):
 @rate_limit(requests_per_minute=30)
 async def patch_draft(request: Request, draft_id: str, data: dict):
     draft = _load_draft(draft_id)
+    # Valida estrutura mínima: rejeita campos que não sejam dict
+    if not isinstance(data, dict):
+        raise HTTPException(400, "Dados inválidos.")
     draft["data"] = {**draft.get("data", {}), **data}
     _save_draft(draft_id, draft)
     return {"ok": True}
@@ -209,12 +253,14 @@ async def patch_draft(request: Request, draft_id: str, data: dict):
 @app.post("/api/anexo1/preview")
 @rate_limit(requests_per_minute=30)
 async def preview_anexo1(request: Request, payload: dict):
+    validate_payload("anexo1", payload)
     enriched = validate_and_enrich_anexo1(payload)
     return enriched
 
 @app.post("/api/anexo2/preview")
 @rate_limit(requests_per_minute=30)
 async def preview_anexo2(request: Request, payload: dict):
+    validate_payload("anexo2", payload)
     enriched = validate_and_enrich_anexo2(payload)
     return enriched
 
@@ -241,7 +287,7 @@ async def prefill_anexo2_from_anexo1(request: Request, file: UploadFile = File(.
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
 
-    return {"ok": True, "prefill": result.prefill, "warnings": result.warnings, "filename": file.filename}
+    return {"ok": True, "prefill": result.prefill, "warnings": result.warnings, "filename": _sanitize_filename(file.filename)}
 
 
 @app.post("/api/anexo1/prefill-from-anexo1")
@@ -266,7 +312,7 @@ async def prefill_anexo1_from_anexo1(request: Request, file: UploadFile = File(.
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
 
-    return {"ok": True, "prefill": result.prefill, "warnings": result.warnings, "filename": file.filename}
+    return {"ok": True, "prefill": result.prefill, "warnings": result.warnings, "filename": _sanitize_filename(file.filename)}
 
 
 def _add_security_headers_to_file_response(response: FileResponse) -> FileResponse:
@@ -281,6 +327,7 @@ def _add_security_headers_to_file_response(response: FileResponse) -> FileRespon
 @app.post("/api/anexo1/generate")
 @rate_limit(requests_per_minute=10)
 async def generate_anexo1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+    validate_payload("anexo1", payload)
     _ensure_data_dir()
 
     enriched = validate_and_enrich_anexo1(payload)
@@ -328,6 +375,7 @@ async def generate_anexo1(request: Request, payload: dict, format: Literal["docx
 @app.post("/api/anexo2/generate")
 @rate_limit(requests_per_minute=10)
 async def generate_anexo2(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+    validate_payload("anexo2", payload)
     _ensure_data_dir()
 
     enriched = validate_and_enrich_anexo2(payload)
@@ -382,15 +430,42 @@ def review_page():
 async def block_docs():
     raise HTTPException(status_code=404, detail="Not Found")
 
+def _is_safe_path(base: Path, target: Path) -> bool:
+    """Verifica se target está dentro de base (proteção contra path traversal)."""
+    try:
+        target.resolve().relative_to(base.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _add_security_headers_to_response(response: FileResponse | HTMLResponse) -> FileResponse | HTMLResponse:
+    """Adiciona headers de segurança em responses estáticas."""
+    if not response.headers:
+        response.headers = {}
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 # ===== Catch-all para SPA React ou fallback 404 =====
 # Deve ser a ÚLTIMA rota.
 if HAS_REACT_BUILD:
     @app.get("/{full_path:path}")
     def serve_react(full_path: str):
-        file_path = FRONTEND_DIST / full_path
-        if file_path.exists() and file_path.is_file():
-            return FileResponse(str(file_path))
-        return HTMLResponse(content=(FRONTEND_DIST / "index.html").read_text(encoding="utf-8"))
+        # Sanitiza path para evitar path traversal (../etc/passwd)
+        safe_path = os.path.normpath(full_path).lstrip("/")
+        if safe_path.startswith("..") or "/../" in safe_path or "\\.." in safe_path:
+            return HTMLResponse(content=_load_404_html(), status_code=404)
+
+        file_path = FRONTEND_DIST / safe_path
+        if file_path.exists() and file_path.is_file() and _is_safe_path(FRONTEND_DIST, file_path):
+            response = FileResponse(str(file_path))
+            return _add_security_headers_to_response(response)
+        return _add_security_headers_to_response(
+            HTMLResponse(content=(FRONTEND_DIST / "index.html").read_text(encoding="utf-8"))
+        )
 else:
     # Fallback vanilla: serve página 404 para rotas não encontradas
     @app.get("/{full_path:path}")

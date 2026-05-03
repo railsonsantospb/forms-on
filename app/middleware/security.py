@@ -42,8 +42,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "form-action 'self';"
         )
         
-        # Strict Transport Security (HSTS) - apenas em produção com HTTPS
-        # response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+        # Strict Transport Security (HSTS) - ativa quando detecta proxy HTTPS
+        forwarded_proto = request.headers.get("x-forwarded-proto", "")
+        if forwarded_proto == "https":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
         
         return response
 
@@ -56,7 +60,14 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.method in ("POST", "PUT", "PATCH"):
             content_length = request.headers.get("content-length")
-            if content_length and int(content_length) > self.MAX_BODY_SIZE:
+            if not content_length:
+                # Rejeita chunked encoding sem content-length (evita bypass de limite)
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=411,
+                    content={"detail": "Content-Length obrigatório."}
+                )
+            if int(content_length) > self.MAX_BODY_SIZE:
                 from fastapi.responses import JSONResponse
                 return JSONResponse(
                     status_code=413,

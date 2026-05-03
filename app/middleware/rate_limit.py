@@ -10,11 +10,40 @@ from fastapi import Request, HTTPException
 
 
 class RateLimiter:
-    """Rate limiter simples baseado em memória (IP-based)."""
+    """Rate limiter simples baseado em memória (IP-based) com auto-limpeza."""
+    
+    MAX_IPS = 10_000  # Limite para evitar memory leak em ataques distribuídos
+    CLEANUP_INTERVAL = 300  # Segundos entre limpezas globais
     
     def __init__(self, requests_per_minute: int = 60):
         self.requests_per_minute = requests_per_minute
         self.requests: dict[str, list[float]] = defaultdict(list)
+        self._last_cleanup = time.time()
+    
+    def _cleanup_old(self, now: float) -> None:
+        """Remove entradas expiradas e limita número total de IPs."""
+        window_start = now - 60
+        keys_to_remove = []
+        for key, timestamps in self.requests.items():
+            valid = [ts for ts in timestamps if ts > window_start]
+            if valid:
+                self.requests[key] = valid
+            else:
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del self.requests[key]
+        
+        # Se ainda há muitos IPs, remove os mais antigos (LRU-like)
+        if len(self.requests) > self.MAX_IPS:
+            sorted_keys = sorted(
+                self.requests.keys(),
+                key=lambda k: self.requests[k][-1] if self.requests[k] else 0
+            )
+            for key in sorted_keys[:len(self.requests) - self.MAX_IPS]:
+                del self.requests[key]
+        
+        self._last_cleanup = now
     
     def is_allowed(self, key: str) -> bool:
         now = time.time()
@@ -25,6 +54,10 @@ class RateLimiter:
             ts for ts in self.requests[key] 
             if ts > window_start
         ]
+        
+        # Limpeza global periódica para evitar memory leak
+        if now - self._last_cleanup > self.CLEANUP_INTERVAL:
+            self._cleanup_old(now)
         
         if len(self.requests[key]) >= self.requests_per_minute:
             return False

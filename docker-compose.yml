@@ -2,10 +2,11 @@ services:
   wizard:
     build: .
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8090:8080"
     volumes:
       - ./app:/app/app:ro
       - ./app/templates:/app/app/templates:ro
+      - ./frontend/dist:/app/frontend/dist
       - ./data:/app/data
     environment:
       - TZ=America/Recife
@@ -40,6 +41,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    read_only: false
+    read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=100m
