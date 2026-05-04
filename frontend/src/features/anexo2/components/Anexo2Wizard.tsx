@@ -367,6 +367,14 @@ export function Anexo2Wizard() {
             {/* STEP 1 */}
             {store.currentStep === 1 && (
               <div className="space-y-4">
+                <button
+                  onClick={() => store.setChatOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-[var(--radius-md)] bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-2)] text-white font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all z-40"
+                  title="Assistente virtual"
+                >
+                  <MessageCircle size={20} />
+                  <span>Assistente virtual — Preencher conversando</span>
+                </button>
                 <DocumentImport onImport={handleImport} label="Importar de Anexo I preenchido" />
                 <FormField label="Data do relatório" error={stepErrors['data_relatorio']} required>
                   <Input type="date" value={data.data_relatorio} onChange={(e) => store.setFieldValue('data_relatorio', e.target.value)} />
@@ -642,14 +650,6 @@ export function Anexo2Wizard() {
         title="Assistente — Anexo II"
       />
 
-      {/* Chat button */}
-      <button
-        onClick={() => store.setChatOpen(true)}
-        className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-[var(--color-accent)] text-white shadow-lg flex items-center justify-center hover:bg-[var(--color-accent)]/90 transition-colors z-40"
-        title="Assistente virtual"
-      >
-        <MessageCircle size={20} />
-      </button>
     </div>
   )
 }

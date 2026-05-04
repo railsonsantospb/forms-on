@@ -56,12 +56,13 @@ export function DocumentImport({ onImport, label = 'Importar dados de documento 
         />
 
         <Button
-          variant="secondary"
+          variant="primary"
           size="sm"
           onClick={() => inputRef.current?.click()}
           isLoading={isLoading}
+          className="bg-[var(--color-warning)] text-[#0f172a] hover:bg-[var(--color-warning)]/90 shadow-lg shadow-[var(--color-warning)]/20 border-0"
         >
-          <Upload size={14} /> Selecionar arquivo
+          <Upload size={16} /> Selecionar arquivo
         </Button>
 
         {warnings.length > 0 && (
