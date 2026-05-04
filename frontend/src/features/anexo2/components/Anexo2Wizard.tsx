@@ -165,21 +165,6 @@ export function Anexo2Wizard() {
     }
   }, [buildPayload, store.currentStep])
 
-  const goNext = () => {
-    if (validateCurrentStep()) {
-      setDirection('forward')
-      store.setStepValidation(store.currentStep, true)
-      store.nextStep()
-    } else {
-      toast.error('Corrija os erros antes de avançar')
-    }
-  }
-
-  const goBack = () => {
-    setDirection('backward')
-    store.prevStep()
-  }
-
   const getFieldLabel = useCallback((path: string): string => {
     const map: Record<string, string> = {
       'data_relatorio': 'Data do relatório',
@@ -209,6 +194,54 @@ export function Anexo2Wizard() {
     }
     return path
   }, [])
+
+  const collectSchemaErrors = useCallback((): Array<{ path: string; field: string; message: string }> => {
+    const payload = buildPayload()
+    try {
+      anexo2Schema.parse(payload)
+      return []
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'issues' in err) {
+        const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
+        return issues.map((issue) => ({
+          path: issue.path.join('.'),
+          field: getFieldLabel(issue.path.join('.')),
+          message: issue.message,
+        }))
+      }
+      return []
+    }
+  }, [buildPayload, getFieldLabel])
+
+  const openValidationModalForStep = useCallback((step: number, allErrors: Array<{ path: string; field: string; message: string }>) => {
+    const currentStepPaths = getStepPaths(step)
+    const stepErrors = allErrors.filter((err) =>
+      currentStepPaths.some((prefix) => err.path.startsWith(prefix)),
+    )
+    const errorsToShow = stepErrors.length ? stepErrors : allErrors
+    setValidationModal({
+      open: true,
+      errors: errorsToShow.map((e) => ({ field: e.field, message: e.message })),
+    })
+  }, [])
+
+  const goNext = () => {
+    if (validateCurrentStep()) {
+      setDirection('forward')
+      store.setStepValidation(store.currentStep, true)
+      store.nextStep()
+    } else {
+      const allErrors = collectSchemaErrors()
+      openValidationModalForStep(store.currentStep, allErrors)
+    }
+  }
+
+  const goBack = () => {
+    setDirection('backward')
+    store.prevStep()
+  }
+
+
 
   const handleGenerate = async (format: 'docx' | 'pdf') => {
     const payload = buildPayload()
@@ -299,7 +332,28 @@ export function Anexo2Wizard() {
 
   return (
     <div>
-      <WizardStepper steps={STEPS} currentStep={store.currentStep} completedSteps={completedSteps} onStepClick={(step) => { setDirection(step < store.currentStep ? 'backward' : 'forward'); store.goToStep(step) }} />
+      <WizardStepper steps={STEPS} currentStep={store.currentStep} completedSteps={completedSteps} onStepClick={(step) => {
+        if (step < store.currentStep) {
+          setDirection('backward')
+          store.goToStep(step)
+          return
+        }
+        if (step > store.currentStep) {
+          const allErrors = collectSchemaErrors()
+          for (let s = store.currentStep; s < step; s++) {
+            const currentStepPaths = getStepPaths(s)
+            const hasError = allErrors.some((err) =>
+              currentStepPaths.some((prefix) => err.path.startsWith(prefix)),
+            )
+            if (hasError) {
+              openValidationModalForStep(s, allErrors)
+              return
+            }
+          }
+          setDirection('forward')
+          store.goToStep(step)
+        }
+      }} />
 
       <Card>
         <CardContent className="pt-5">
