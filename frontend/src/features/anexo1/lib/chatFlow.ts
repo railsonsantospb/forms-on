@@ -64,7 +64,7 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
   const states: ChatStateDefinition[] = [
     {
       id: 'start',
-      question: 'Oi! Sou seu assistente de preenchimento do Anexo I. Vou te ajudar a preencher a requisição de diárias/passagens.\n\nQual é o tipo da sua solicitação?',
+      question: 'Oi! Sou Dira, sua assistente virtual de preenchimento do Anexo I. Vou te ajudar a preencher a requisição de diárias/passagens.\n\nQual é o tipo da sua solicitação?',
       inputMode: 'quick',
       options: [
         { label: 'Diárias', value: 'diarias' },
@@ -369,7 +369,7 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
       id: 'summary',
       question: (data) => {
         const nome = String((data.servidor as Record<string, unknown>)?.nome_completo || '').split(' ')[0]
-        return `Perfeito${nome ? ', ' + nome : ''}! Reuni todos os dados. Posso aplicar no formulário?`
+        return `Perfeito${nome ? ', ' + nome : ''}! Reuni todos os dados. Posso aplicar no formulário para você?`
       },
       inputMode: 'quick',
       options: [{ label: 'Sim, aplicar', value: 'aplicar' }],
@@ -377,7 +377,7 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
     },
     {
       id: 'done',
-      question: 'Dados aplicados! Revise no formulário e gere o documento quando estiver pronto.',
+      question: 'Prontinho! Dados aplicados no formulário. Revise e gere o documento quando estiver pronto. Se precisar de mim, é só chamar! 😉',
       inputMode: 'quick',
       options: [],
       nextState: 'done',

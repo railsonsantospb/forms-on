@@ -373,7 +373,7 @@ export function Anexo2Wizard() {
                   title="Assistente virtual"
                 >
                   <MessageCircle size={20} />
-                  <span>Assistente virtual — Preencher conversando</span>
+                  <span>Dira — Assistente virtual — Preencher conversando</span>
                 </button>
                 <DocumentImport onImport={handleImport} label="Importar de Anexo I preenchido" />
                 <FormField label="Data do relatório" error={stepErrors['data_relatorio']} required>
@@ -647,7 +647,7 @@ export function Anexo2Wizard() {
           toast.success('Dados do assistente aplicados! Revise na tela de conferência.')
         })}
         onApply={() => store.setChatOpen(false)}
-        title="Assistente — Anexo II"
+        title="Dira — Assistente Anexo II"
       />
 
     </div>

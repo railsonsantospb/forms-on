@@ -35,7 +35,7 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
   const states: ChatStateDefinition[] = [
     {
       id: 'start',
-      question: (data) => `Oi! Sou seu assistente de preenchimento do Anexo II. Vou te ajudar com o relatório de viagem.\n\nVou preencher a data do relatório com a data de hoje.\n${formatDateChat((data.data_relatorio as string) || todayISO())}`,
+      question: (data) => `Oi! Sou Dira, sua assistente virtual de preenchimento do Anexo II. Vou te ajudar com o relatório de viagem.\n\nVou preencher a data do relatório com a data de hoje.\n${formatDateChat((data.data_relatorio as string) || todayISO())}`,
       inputMode: 'date',
       fieldPath: 'data_relatorio',
       autoValue: () => todayISO(),
@@ -236,7 +236,7 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
       id: 'summary',
       question: (data) => {
         const nome = String((data.proposto as Record<string, unknown>)?.nome || '').split(' ')[0]
-        return `Perfeito${nome ? ', ' + nome : ''}! Reuni todos os dados do relatório. Posso aplicar no formulário?`
+        return `Perfeito${nome ? ', ' + nome : ''}! Reuni todos os dados do relatório. Posso aplicar no formulário para você?`
       },
       inputMode: 'quick',
       options: [{ label: 'Sim, aplicar', value: 'aplicar' }],
@@ -244,7 +244,7 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
     },
     {
       id: 'done',
-      question: 'Dados aplicados! Revise no formulário e gere o documento quando estiver pronto.',
+      question: 'Prontinho! Dados aplicados no formulário. Revise e gere o documento quando estiver pronto. Se precisar de mim, é só chamar! 😉',
       inputMode: 'quick',
       options: [],
       nextState: 'done',

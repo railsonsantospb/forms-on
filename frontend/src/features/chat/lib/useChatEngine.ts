@@ -33,7 +33,7 @@ export function useChatEngine(flow: ChatFlowDefinition) {
     const initialMessage: ChatMessage = {
       id: generateId(),
       role: 'assistant',
-      content: initialState ? getQuestion(initialState, {}) : 'Olá!',
+      content: initialState ? getQuestion(initialState, {}) : 'Oi! Sou Dira, sua assistente virtual. Como posso te ajudar hoje?',
       quickOptions: initialState?.options,
       inputMode: initialState?.inputMode,
       timestamp: Date.now(),
@@ -181,7 +181,7 @@ export function useChatEngine(flow: ChatFlowDefinition) {
     const initialMessage: ChatMessage = {
       id: generateId(),
       role: 'assistant',
-      content: initialState ? getQuestion(initialState, {}) : 'Olá!',
+      content: initialState ? getQuestion(initialState, {}) : 'Oi! Sou Dira, sua assistente virtual. Como posso te ajudar hoje?',
       quickOptions: initialState?.options,
       inputMode: initialState?.inputMode,
       timestamp: Date.now(),
