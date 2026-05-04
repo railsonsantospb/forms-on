@@ -161,7 +161,8 @@ def find_one(pattern: str, text: str, flags=re.IGNORECASE) -> Optional[str]:
 STOP_LABELS_PATTERN = (
     r"(?:Nome completo|Cargo ou Fun[cç][ãa]o que Ocupa|CPF|RG|Nº do Passaporte|Passaporte|"
     r"Data de Nascimento|Siape|Nome da M[ãa]e|Endere[cç]o|Telefone|Email|"
-    r"Lotação/Órgão|Lota[cç][ãa]o|Dados Banc[aá]rios|Banc[aá]rios|Banco|Ag[êe]ncia|Conta)"
+    r"Lotação/Órgão|Lota[cç][ãa]o|Dados Banc[aá]rios|Banc[aá]rios|Banco|Ag[êe]ncia|Conta|"
+    r"Órgão de Exercício|Órgão)"
     r"(?:\s*\([^)]*\))?\s*:"
 )
 

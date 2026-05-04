@@ -22,6 +22,7 @@ from app.services.anexo1_import import (
     extract_prefill_for_anexo1,
     extract_prefill_from_anexo1,
 )
+from app.services.anexo2_import import extract_prefill_for_anexo2
 from app.services.validate_anexo1 import validate_and_enrich_anexo1
 from app.services.validate_anexo2 import validate_and_enrich_anexo2
 from app.services.docx_render import render_docx_from_template
@@ -308,6 +309,31 @@ async def prefill_anexo1_from_anexo1(request: Request, file: UploadFile = File(.
         raise HTTPException(400, str(exc))
     except Exception:
         raise HTTPException(400, "Não foi possível extrair dados do Anexo I. Confirme se o arquivo está legível.")
+    finally:
+        if tmp_path:
+            tmp_path.unlink(missing_ok=True)
+
+    return {"ok": True, "prefill": result.prefill, "warnings": result.warnings, "filename": _sanitize_filename(file.filename)}
+
+
+@app.post("/api/anexo2/prefill-from-anexo2")
+@rate_limit(requests_per_minute=10)
+async def prefill_anexo2_from_anexo2(request: Request, file: UploadFile = File(...)):
+    content = await file.read()
+    _validate_file(file, content)
+    suffix = Path(file.filename).suffix.lower() if file.filename else ".pdf"
+
+    tmp_path = None
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+
+        result = extract_prefill_for_anexo2(tmp_path)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception:
+        raise HTTPException(400, "Não foi possível extrair dados do Anexo II. Confirme se o arquivo está legível.")
     finally:
         if tmp_path:
             tmp_path.unlink(missing_ok=True)

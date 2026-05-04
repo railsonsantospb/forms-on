@@ -75,6 +75,28 @@
       </div>
       <div class="helper" id="importWarnings" style="display:none;"></div>
     </div>
+
+    <div class="card" id="importAnexo2Card" style="display:none;">
+      <div class="card-header">
+        <div>
+          <h2>Importar dados do Anexo II</h2>
+          <div class="meta">Envie o Anexo II preenchido (PDF/DOC/DOCX) para reaproveitar os dados.
+          </div>
+        </div>
+        <span id="importSelfBadge" class="badge">Opcional</span>
+      </div>
+      <div class="row" style="gap:10px; flex-wrap:wrap;">
+        <input id="inputAnexo2Self" type="file"
+          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        <button type="button" class="btn" id="btnImportAnexo2Self">Ler arquivo</button>
+        <div id="importSelfProgress" class="progress-indicator" style="display:none;">
+          <div class="spinner" aria-hidden="true"></div>
+          <span data-progress-text>Interpretando Anexo II...</span>
+        </div>
+      </div>
+      <div class="helper" id="importSelfHelper">Selecione o Anexo II preenchido para reaproveitar os dados.</div>
+      <div class="helper" id="importSelfWarnings" style="display:none;"></div>
+    </div>
     
 
     <div class="card">

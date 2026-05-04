@@ -491,10 +491,7 @@ function gotoStep(n){
 
   elBar.style.width = `${Math.round((current-1)/(total-1)*100)}%`;
 
-  const importCard = document.getElementById("importAnexo1Card");
-  if(importCard){
-    importCard.style.display = (current === 1) ? "block" : "none";
-  }
+  toggleImportCards(current);
 
   document.getElementById("btnBack").disabled = current === 1;
   const btnNext = document.getElementById("btnNext");
@@ -993,6 +990,7 @@ async function generate(format){
 
 /* Importação a partir do Anexo I (Docling) */
 const importInput = document.getElementById("inputAnexo1");
+const importCard = document.getElementById("importAnexo1Card");
 const importBtn = document.getElementById("btnImportAnexo1");
 const importBadge = document.getElementById("importBadge");
 const importHelper = document.getElementById("importHelper");
@@ -1075,6 +1073,87 @@ if(importInput) importInput.addEventListener("change", () => {
   handleImportAnexo1();
 });
 
+/* ---------- Import Anexo II (self-import) ---------- */
+const importSelfInput = document.getElementById("inputAnexo2Self");
+const importSelfBtn = document.getElementById("btnImportAnexo2Self");
+const importSelfBadge = document.getElementById("importSelfBadge");
+const importSelfHelper = document.getElementById("importSelfHelper");
+const importSelfWarnings = document.getElementById("importSelfWarnings");
+const importSelfProgress = document.getElementById("importSelfProgress");
+const importSelfCard = document.getElementById("importAnexo2Card");
+
+function setSelfImportBadge(text, kind){
+  if(!importSelfBadge) return;
+  importSelfBadge.textContent = text;
+  importSelfBadge.className = "badge" + (kind ? " " + kind : "");
+}
+function setSelfImportProgress(show){
+  if(!importSelfProgress) return;
+  importSelfProgress.style.display = show ? "inline-flex" : "none";
+}
+function renderSelfImportWarnings(list){
+  if(!importSelfWarnings) return;
+  if(!list || !list.length){
+    importSelfWarnings.style.display = "none";
+    importSelfWarnings.textContent = "";
+    return;
+  }
+  importSelfWarnings.style.display = "block";
+  importSelfWarnings.textContent = list.map(w => `• ${w}`).join(" ");
+}
+
+async function handleImportAnexo2Self(){
+  if(!importSelfInput || !importSelfInput.files || !importSelfInput.files.length){
+    setSelfImportBadge("Selecione o arquivo", "warn");
+    if(importSelfHelper) importSelfHelper.textContent = "Escolha o PDF/DOC/DOCX do Anexo II preenchido para importar.";
+    return;
+  }
+  setSelfImportBadge("Lendo...", "warn");
+  setSelfImportProgress(true);
+  renderSelfImportWarnings(null);
+  try{
+    const fd = new FormData();
+    fd.append("file", importSelfInput.files[0]);
+    const res = await fetch("/api/anexo2/prefill-from-anexo2", { method:"POST", body: fd });
+    const json = await res.json().catch(() => null);
+    if(!res.ok || !json || !json.prefill){
+      const detail = json && json.detail ? json.detail : null;
+      setSelfImportBadge("Erro na leitura", "danger");
+      if(importSelfHelper) importSelfHelper.textContent = typeof detail === "string" ? detail : "Não foi possível ler o arquivo.";
+      return;
+    }
+    applyPrefillAnexo2(json.prefill);
+    const warnings = json.warnings || [];
+    if(warnings.length){
+      setSelfImportBadge("Atenção na importação", "warn");
+      renderSelfImportWarnings(warnings);
+      const baseMsg = warnings.length === 1 ? "1 campo não foi identificado." : `${warnings.length} campos não foram identificados.`;
+      if(importSelfHelper) importSelfHelper.textContent = `${baseMsg} Revise os campos antes de gerar o relatório.`;
+    } else {
+      setSelfImportBadge("Importado com sucesso", "success");
+      renderSelfImportWarnings(null);
+      if(importSelfHelper) importSelfHelper.textContent = "Dados importados do documento!";
+    }
+  }catch(err){
+    setSelfImportBadge("Erro de conexão", "danger");
+    if(importSelfHelper) importSelfHelper.textContent = "Falha ao enviar o arquivo. Tente novamente.";
+  }finally{
+    setSelfImportProgress(false);
+  }
+}
+
+if(importSelfBtn) importSelfBtn.addEventListener("click", handleImportAnexo2Self);
+if(importSelfInput) importSelfInput.addEventListener("change", () => {
+  setSelfImportBadge("Pronto para importar", "");
+  renderSelfImportWarnings(null);
+  handleImportAnexo2Self();
+});
+
+// Show self-import card on step 1
+function toggleImportCards(currentStep){
+  if(importCard) importCard.style.display = (currentStep === 1) ? "block" : "none";
+  if(importSelfCard) importSelfCard.style.display = (currentStep === 1) ? "block" : "none";
+}
 
 /* =========================
 /* =========================
