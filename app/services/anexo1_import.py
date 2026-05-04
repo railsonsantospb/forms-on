@@ -440,14 +440,14 @@ def parse_debito_recurso(text: str) -> Optional[str]:
 
 def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
     if tipo.lower() == "ida":
-        block = find_block(r"DESTINO\s*\(Ida\):\s*", r"DESTINO\s*\(Retorno\):", text)
+        block = find_block(r"DESTINO\s*\(?Ida\)?:\s*", r"DESTINO\s*\(?Retorno\)?:", text)
         if block is None:
-            m = re.search(r"DESTINO\s*\(Ida\):\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+            m = re.search(r"DESTINO\s*\(?Ida\)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
             block = m.group(1).strip() if m else ""
     else:
-        block = find_block(r"DESTINO\s*\(Retorno\):\s*", r"DATA/HORA DA MISS[ÃA]O/COMPROMISSO:", text)
+        block = find_block(r"DESTINO\s*\(?Retorno\)?:\s*", r"DATA/HORA DA MISS[ÃA]O/COMPROMISSO:", text)
         if block is None:
-            m = re.search(r"DESTINO\s*\(Retorno\):\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+            m = re.search(r"DESTINO\s*\(?Retorno\)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
             block = m.group(1).strip() if m else ""
 
     # Try "Local de Origem" first, then "Cidade de Origem" (template uses both)
@@ -468,6 +468,7 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
         destino = (
             find_one(r"Local\s+de\s+Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
             or find_one(r"Cidade\s+de\s+Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
+            or find_one(r"Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
         )
         # Clean up leaked labels from adjacent cells/lines
         def _clean_destino(val: Optional[str]) -> str:
@@ -479,6 +480,15 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
 
         origem = _clean_destino(origem)
         destino = _clean_destino(destino)
+
+        # Fallback: when "Cidade de Origem:" label is missing but city appears before "Cidade de Destino:"
+        if not origem or re.fullmatch(r"\d{2}/\d{2}/\d{4}", origem):
+            m = re.search(r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s*\|\s*Cidade\s+de\s+Destino:", block, flags=re.IGNORECASE)
+            if not m:
+                # Even looser: any city/state pattern before Destino
+                m = re.search(r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s+(?:Cidade\s+de\s+)?Destino:", block, flags=re.IGNORECASE)
+            if m:
+                origem = m.group(1).strip()
 
         dh = find_one(r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})\s+(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
         # Also try separate Data + Hora lines
@@ -544,7 +554,12 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
     cpf = find_with_stop(r"CPF", block) or find_one(r"CPF:\s*([0-9\.\-]{11,14}|\d{11})", block)
     rg = find_with_stop(r"RG", block) or find_one(r"RG:\s*([0-9\.\-]+)", block)
 
-    nasc = find_with_stop(r"Data de Nascimento", block) or find_one(r"Data de Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
+    nasc = (
+        find_with_stop(r"Data de Nascimento", block)
+        or find_one(r"Data de Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
+        or find_one(r"Data\s+Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
+        or find_one(r"Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
+    )
     siape = find_with_stop(r"Siape", block) or find_one(r"Siape:\s*(\d+)", block)
 
     mae = find_with_stop(r"Nome da M[ãa]e", block)
@@ -1005,10 +1020,19 @@ def build_anexo1_warnings(prefill: Dict[str, Any], *, skip_trechos: bool = False
         ret_list = trechos.get("retorno") or []
         ida = ida_list[0] if isinstance(ida_list, list) and ida_list else {}
         ret = ret_list[0] if isinstance(ret_list, list) and ret_list else {}
-        if not ida.get("origem") or not ida.get("destino"):
+
+        # Warn if neither origem nor destino is present, or if data_hora is missing
+        if not ida.get("destino"):
             warnings.append("Trecho de ida incompleto; revise origem/destino.")
-        if not ret.get("origem") or not ret.get("destino"):
+        elif not ida.get("origem"):
+            # softer warning: destino was read but origem wasn't
+            warnings.append("Cidade de origem da ida não identificada; revise.")
+
+        if not ret.get("destino"):
             warnings.append("Trecho de retorno incompleto; revise origem/destino.")
+        elif not ret.get("origem"):
+            warnings.append("Cidade de origem do retorno não identificada; revise.")
+
         if not ida.get("data_hora") or not ret.get("data_hora"):
             warnings.append("Datas/horários não foram lidos; informe manualmente.")
 
