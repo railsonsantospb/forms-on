@@ -554,12 +554,46 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
     cpf = find_with_stop(r"CPF", block) or find_one(r"CPF:\s*([0-9\.\-]{11,14}|\d{11})", block)
     rg = find_with_stop(r"RG", block) or find_one(r"RG:\s*([0-9\.\-]+)", block)
 
-    nasc = (
-        find_with_stop(r"Data de Nascimento", block)
-        or find_one(r"Data de Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
-        or find_one(r"Data\s+Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
-        or find_one(r"Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})", block)
-    )
+    def _find_dob(txt: str) -> Optional[str]:
+        """Try multiple patterns to find date of birth."""
+        patterns = [
+            # Label + value on same line
+            r"Data\s+de\s+Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})",
+            r"Data\s+Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})",
+            r"Nascimento:\s*([0-3]\d/[0-1]\d/\d{4})",
+            r"Dt\.?\s*Nasc\.?\s*:\s*([0-3]\d/[0-1]\d/\d{4})",
+            r"Dt\.?\s*Nascimento\s*:\s*([0-3]\d/[0-1]\d/\d{4})",
+            # Label ends with colon, value on next line
+            r"Data\s+de\s+Nascimento:\s*\n\s*([0-3]\d/[0-1]\d/\d{4})",
+            r"Data\s+Nascimento:\s*\n\s*([0-3]\d/[0-1]\d/\d{4})",
+            r"Nascimento:\s*\n\s*([0-3]\d/[0-1]\d/\d{4})",
+            # Value inside parentheses or brackets near label
+            r"Data\s+de\s+Nascimento.*?\(?([0-3]\d/[0-1]\d/\d{4})\)?",
+            r"Nascimento.*?\(?([0-3]\d/[0-1]\d/\d{4})\)?",
+        ]
+        for pat in patterns:
+            m = re.search(pat, txt, flags=re.IGNORECASE | re.DOTALL)
+            if m:
+                return m.group(1).strip()
+        return None
+
+    nasc = find_with_stop(r"Data de Nascimento", block) or _find_dob(block)
+    # Ultimate fallback: any DD/MM/YYYY in the identification block is likely the DOB
+    if not nasc:
+        dates = re.findall(r"([0-3]\d)[/.-]([0-1]\d)[/.-](\d{4})", block)
+        if dates:
+            # Pick the earliest date as the most likely birth date
+            from datetime import datetime
+            parsed_dates = []
+            for d in dates:
+                try:
+                    dt = datetime.strptime(f"{d[0]}/{d[1]}/{d[2]}", "%d/%m/%Y")
+                    parsed_dates.append((dt, f"{d[0]}/{d[1]}/{d[2]}"))
+                except ValueError:
+                    continue
+            if parsed_dates:
+                parsed_dates.sort(key=lambda x: x[0])
+                nasc = parsed_dates[0][1]
     siape = find_with_stop(r"Siape", block) or find_one(r"Siape:\s*(\d+)", block)
 
     mae = find_with_stop(r"Nome da M[ãa]e", block)
