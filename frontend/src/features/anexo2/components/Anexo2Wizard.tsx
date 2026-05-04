@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { ValidationErrorsModal } from '@/components/ui/modal'
 import { useAnexo2WizardStore } from '../store/useAnexo2WizardStore'
 import { WizardStepper } from '@/components/wizard/WizardStepper'
 import { WizardNavigation } from '@/components/wizard/WizardNavigation'
@@ -56,6 +57,7 @@ export function Anexo2Wizard() {
   const prefill = useAnexo2Prefill()
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward')
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
+  const [validationModal, setValidationModal] = useState<{ open: boolean; errors: Array<{ field: string; message: string }> }>({ open: false, errors: [] })
 
   const data = store.formData
 
@@ -178,22 +180,96 @@ export function Anexo2Wizard() {
     store.prevStep()
   }
 
+  const getFieldLabel = useCallback((path: string): string => {
+    const map: Record<string, string> = {
+      'data_relatorio': 'Data do relatório',
+      'proposto.nome': 'Nome completo',
+      'proposto.cpf': 'CPF',
+      'proposto.siape': 'SIAPE',
+      'proposto.cargo_funcao': 'Cargo/Função',
+      'proposto.telefone': 'Telefone',
+      'proposto.email': 'E-mail',
+      'proposto.orgao.tipo': 'Órgão de exercício',
+      'proposto.orgao.detalhe': 'Detalhe do órgão',
+      'afastamento.ida': 'Trechos de ida',
+      'afastamento.retorno': 'Trechos de retorno',
+      'atividades_tabela': 'Tabela de atividades',
+      'justificativa_prestacao_contas_fora_prazo': 'Justificativa fora do prazo',
+      'viagem_realizada': 'Viagem realizada?',
+      'alteracoes_cancelamentos_noshow': 'Alterações / Cancelamentos / No Show',
+    }
+    if (map[path]) return map[path]
+    // trechos dinâmicos
+    const trechoMatch = path.match(/^(afastamento\.(ida|retorno)\.(\d+)\.(origem|destino|data_hora))$/)
+    if (trechoMatch) {
+      const [, , tipo, idx, campo] = trechoMatch
+      const tipoLabel = tipo === 'ida' ? 'ida' : 'retorno'
+      const campoLabel = campo === 'origem' ? 'Origem' : campo === 'destino' ? 'Destino' : 'Data e hora'
+      return `${campoLabel} (${tipoLabel} • trecho ${Number(idx) + 1})`
+    }
+    return path
+  }, [])
+
   const handleGenerate = async (format: 'docx' | 'pdf') => {
     const payload = buildPayload()
-    const previewRes = await preview.mutateAsync(payload)
-    if (!previewRes.ok) {
-      toast.error('Há erros de validação. Corrija antes de gerar.')
-      return
+
+    // validação local prévia com schema
+    try {
+      anexo2Schema.parse(payload)
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'issues' in err) {
+        const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
+        const errors = issues.map((issue) => ({
+          field: getFieldLabel(issue.path.join('.')),
+          message: issue.message,
+        }))
+        setValidationModal({ open: true, errors })
+        return
+      }
     }
-    const { blob, filename } = await generate.mutateAsync({ format, payload })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success(`Documento ${format.toUpperCase()} gerado com sucesso!`)
-    clear()
+
+    try {
+      const previewRes = await preview.mutateAsync(payload)
+      if (!previewRes.ok) {
+        const backendErrors = (previewRes.issues || []).map((e: { field?: string; message: string }) => ({
+          field: getFieldLabel(e.field || ''),
+          message: e.message,
+        }))
+        setValidationModal({
+          open: true,
+          errors: backendErrors.length > 0
+            ? backendErrors
+            : [{ field: 'Erro de validação', message: 'Há erros de validação. Corrija antes de gerar.' }],
+        })
+        return
+      }
+      const { blob, filename } = await generate.mutateAsync({ format, payload })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`Documento ${format.toUpperCase()} gerado com sucesso!`)
+      clear()
+    } catch (err: unknown) {
+      const apiErr = err as {
+        body?: {
+          errors?: Array<{ field: string; message: string }>
+          issues?: Array<{ field: string; message: string }>
+          detail?: string | Record<string, unknown>
+        }
+        message?: string
+      }
+      const rawErrors = apiErr?.body?.errors || apiErr?.body?.issues || []
+      const bodyErrors = rawErrors.map((e) => ({ field: getFieldLabel(e.field), message: e.message }))
+      setValidationModal({
+        open: true,
+        errors: bodyErrors.length > 0
+          ? bodyErrors
+          : [{ field: 'Erro na geração', message: err instanceof Error ? err.message : 'Não foi possível gerar o documento. Tente novamente.' }],
+      })
+    }
   }
 
   const handleImport = async (file: File) => {
@@ -483,6 +559,13 @@ export function Anexo2Wizard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal genérico de erros de validação */}
+      <ValidationErrorsModal
+        open={validationModal.open}
+        onClose={() => setValidationModal({ open: false, errors: [] })}
+        errors={validationModal.errors}
+      />
 
       {/* Chat Modal */}
       <ChatModal

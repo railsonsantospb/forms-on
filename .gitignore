@@ -7,3 +7,16 @@ __pycache__/
 # Docker
 .env
 
+# macOS
+.DS_Store
+
+# Arquivos gerados temporários
+data/*.docx
+data/*.pdf
+*.docx
+*.pdf
+
+# Node
+node_modules/
+frontend/dist/
+

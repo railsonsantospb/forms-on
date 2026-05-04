@@ -6,6 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/png" sizes="64x64" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    @keyframes modalIn {
+      from { opacity:0; transform: translateY(12px) scale(0.98); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    .val-modal-item {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:10px 12px; border-radius:8px;
+      background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.12);
+      margin-bottom:8px; font-size:calc(var(--fs-sm)*var(--font-scale));
+    }
+    .val-modal-item:last-child { margin-bottom:0; }
+    .val-modal-item svg { flex-shrink:0; margin-top:2px; color:#ef4444; }
+    .val-modal-field { font-weight:600; color:var(--text); display:block; }
+    .val-modal-msg  { color:var(--subtle); font-size:calc((var(--fs-xs)+1px)*var(--font-scale)); }
+  </style>
   <title>ANEXO II • Relatório</title>
 </head>
 
@@ -321,6 +337,30 @@
 
     </form>
   </div>
+  <!-- Modal de erros de validação -->
+  <div id="validationModal2" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:11000; align-items:center; justify-content:center;">
+    <div class="card" style="max-width:520px; width:92%; margin:auto; padding:0; overflow:hidden; animation:modalIn 180ms ease-out;">
+      <div class="card-header" style="padding:16px 18px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:38px; height:38px; border-radius:50%; background:rgba(239,68,68,0.12); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="color:#ef4444; font-size:18px; font-weight:700;">!</span>
+          </div>
+          <div>
+            <h2 style="margin:0; font-size:calc((var(--fs-lg))*var(--font-scale));">Campos pendentes</h2>
+            <div class="meta" style="margin-top:2px;">Preencha os campos abaixo antes de continuar:</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost" id="validationModal2Close" aria-label="Fechar">✕</button>
+      </div>
+      <div id="validationModal2Body" style="max-height:60vh; overflow-y:auto; padding:12px 18px;">
+        <!-- lista de erros injetada via JS -->
+      </div>
+      <div style="padding:12px 18px; border-top:1px solid rgba(255,255,255,0.08); display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" id="validationModal2Action">Corrigir agora</button>
+      </div>
+    </div>
+  </div>
+
   <div id="chatFullModal2" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000;">
     <div class="card" style="max-width:980px; margin:4vh auto; padding:0; overflow:hidden;">
       <div class="card-header" style="padding:14px 16px;">

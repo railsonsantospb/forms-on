@@ -480,6 +480,156 @@ function setGenProgress(show, msg){
   if(t) t.textContent = msg || "Gerando documento...";
 }
 
+/* ========== Modal de erros de validação ========== */
+const valModal2 = document.getElementById("validationModal2");
+const valModal2Body = document.getElementById("validationModal2Body");
+const valModal2Close = document.getElementById("validationModal2Close");
+const valModal2Action = document.getElementById("validationModal2Action");
+
+function openValidationModal2(errors){
+  if(!valModal2 || !valModal2Body) return;
+  if(!errors || !errors.length) return;
+
+  valModal2Body.innerHTML = errors.map(err => {
+    const field = err.field || "";
+    const message = err.message || "";
+    return `
+      <div class="val-modal-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div style="min-width:0;">
+          <span class="val-modal-field">${escapeHtml(field)}</span>
+          <span class="val-modal-msg">${escapeHtml(message)}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  valModal2.style.display = "flex";
+  document.body.style.overflow = "hidden";
+
+  // Guardar referência ao primeiro campo para focar ao fechar
+  valModal2._firstField = errors[0]?.field || "";
+}
+
+function closeValidationModal2(){
+  if(!valModal2) return;
+  valModal2.style.display = "none";
+  document.body.style.overflow = "";
+
+  // Tentar navegar para o campo do primeiro erro
+  const firstField = valModal2._firstField;
+  if(firstField){
+    const el = document.querySelector(`[name="${firstField}"]`);
+    if(el){
+      // determina em qual passo está o campo
+      const stepSection = el.closest(".step");
+      if(stepSection){
+        const stepNum = Number(stepSection.dataset.step);
+        if(stepNum) gotoStep(stepNum);
+      }
+      setTimeout(() => { el.focus(); el.scrollIntoView({behavior:"smooth", block:"center"}); }, 80);
+    }
+  }
+}
+
+if(valModal2Close) valModal2Close.addEventListener("click", closeValidationModal2);
+if(valModal2Action) valModal2Action.addEventListener("click", closeValidationModal2);
+if(valModal2){
+  valModal2.addEventListener("click", (e) => {
+    if(e.target === valModal2) closeValidationModal2();
+  });
+}
+function escapeHtml(str){
+  if(str == null) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* Coleta erros de todos os passos para o modal */
+function collectAllStepErrors(){
+  const allErrors = [];
+  for(let i=1;i<=total;i++){
+    const section = getSection(i);
+    if(!section) continue;
+    const inputs = Array.from(section.querySelectorAll("input, select, textarea"));
+    for(const el of inputs){
+      if(el.disabled) continue;
+      const wrap = el.closest("[style*='display:none']");
+      if(wrap) continue;
+      const label = getFieldLabel(el);
+      const val = (el.value || "").trim();
+
+      if(el.hasAttribute("required") && !val){
+        allErrors.push({ field: label, message: "Campo obrigatório não preenchido." });
+        continue;
+      }
+      if(el.tagName === "INPUT" && el.getAttribute("pattern")){
+        const re = new RegExp("^" + el.getAttribute("pattern") + "$");
+        if(val && !re.test(val)){
+          const tip = PATTERN_TIPS[el.name || el.id] || "Formato inválido.";
+          allErrors.push({ field: label, message: tip });
+          continue;
+        }
+      }
+      if(el.name === "proposto.cpf" && val){
+        if(!isCPF(val)){
+          allErrors.push({ field: label, message: "CPF inválido (dígitos não conferem)." });
+          continue;
+        }
+      }
+      if(el.id === "dataRelDisplay" && val && !parseDateBRToISO(val)){
+        allErrors.push({ field: label, message: "Use o formato dd/mm/aaaa." });
+        continue;
+      }
+      if(el.tagName === "TEXTAREA" && el.getAttribute("minlength")){
+        const min = Number(el.getAttribute("minlength"));
+        if(val && val.length < min){
+          allErrors.push({ field: label, message: `Mínimo de ${min} caracteres.` });
+          continue;
+        }
+      }
+    }
+  }
+  // regras cross-step
+  const payload = formToJSON();
+  const idaList = normalizeAfastList(payload?.afastamento?.ida);
+  const retList = normalizeAfastList(payload?.afastamento?.retorno);
+  const ida = idaList[0]?.data_hora ? new Date(idaList[0].data_hora) : null;
+  const ret = retList.length ? new Date(retList[retList.length - 1].data_hora) : null;
+  if(ida && ret && ret < ida){
+    allErrors.push({ field: "Afastamento", message: "Retorno não pode ser anterior à ida." });
+  }
+  const relDate = payload?.data_relatorio ? new Date(payload.data_relatorio + "T00:00:00") : null;
+  if(relDate && ret){
+    const retDay = new Date(ret.toISOString().slice(0,10) + "T00:00:00");
+    const limite = new Date(retDay.getTime() + 5*24*60*60*1000);
+    if(relDate > limite){
+      const just = (payload.justificativa_prestacao_contas_fora_prazo || "").trim();
+      if(just.length < 10){
+        allErrors.push({ field: "Justificativa fora do prazo", message: "Relatório fora do prazo. Informe a justificativa (mín. 10 caracteres)." });
+      }
+    }
+  }
+  if(payload?.viagem_realizada === "nao"){
+    const atv = (payload.atividades_desenvolvidas || "").trim();
+    if(atv.length < 10){
+      allErrors.push({ field: "Atividades desenvolvidas", message: "Viagem não realizada: descreva o motivo (mín. 10 caracteres)." });
+    }
+  }
+  if((payload?.atividades_desenvolvidas || "").trim().length < 10){
+    allErrors.push({ field: "Atividades desenvolvidas", message: "Texto muito curto. Descreva de forma objetiva (mín. 10 caracteres)." });
+  }
+  const orgTipo = payload?.proposto?.orgao?.tipo;
+  const orgDet = (payload?.proposto?.orgao?.detalhe || "").trim();
+  if(orgTipo === "projetos" || orgTipo === "outros"){
+    if(orgDet.length < 2){
+      allErrors.push({ field: "Detalhe do órgão", message: "Informe o detalhe do órgão para Projetos/Outros." });
+    }
+  }
+  return allErrors;
+}
+
 function gotoStep(n){
   current = Math.max(1, Math.min(total, n));
   steps.forEach(s => s.style.display = (Number(s.dataset.step) === current) ? "block" : "none");
@@ -939,18 +1089,18 @@ async function generate(format){
 
     if(!previewRes.ok || !previewJson){
       setStatus("Erro", "danger");
-      showErrors(["Falha ao validar os dados."]);
+      const netErr = [{ field: "Erro de conexão", message: "Falha ao validar os dados. Tente novamente." }];
+      openValidationModal2(netErr);
       return;
     }
 
     if(previewJson.ok === false){
       setStatus("Correção necessária", "warn");
-      const msgs = (previewJson.errors || []).map(e => e.message);
-      showErrors(msgs.length ? msgs : ["Revise os campos."]);
-      const first = (previewJson.errors && previewJson.errors[0] && previewJson.errors[0].field) ? previewJson.errors[0].field : "";
-      if(first.startsWith("afastamento")) gotoStep(3);
-      else if(first.startsWith("justificativa")) gotoStep(5);
-      else gotoStep(2);
+      const errs = (previewJson.errors || []).map(e => ({
+        field: getFieldLabelFromBackendField(e.field) || e.field || "Campo",
+        message: e.message || "Revise este campo."
+      }));
+      openValidationModal2(errs.length ? errs : [{ field: "Validação", message: "Revise os campos." }]);
       return;
     }
 
@@ -966,8 +1116,11 @@ async function generate(format){
       const err = await genRes.json().catch(()=>null);
       setStatus("Erro", "danger");
       const detail = err?.detail || err;
-      const msgs = (detail?.errors || []).map(e => e.message);
-      showErrors(msgs.length ? msgs : ["Falha ao gerar o documento."]);
+      const msgs = (detail?.errors || []).map(e => ({
+        field: getFieldLabelFromBackendField(e.field) || e.field || "Campo",
+        message: e.message || "Erro ao gerar."
+      }));
+      openValidationModal2(msgs.length ? msgs : [{ field: "Erro na geração", message: "Falha ao gerar o documento." }]);
       return;
     }
 
@@ -982,10 +1135,38 @@ async function generate(format){
     setStatus("Gerado com sucesso", "success");
   }catch(e){
     setStatus("Erro", "danger");
-    showErrors(["Falha ao gerar o documento."]);
+    openValidationModal2([{ field: "Erro inesperado", message: e?.message || "Falha ao gerar o documento." }]);
   }finally{
     setGenProgress(false);
   }
+}
+
+function getFieldLabelFromBackendField(field){
+  if(!field) return "";
+  const map = {
+    "data_relatorio": "Data do relatório",
+    "proposto.nome": "Nome completo",
+    "proposto.cpf": "CPF",
+    "proposto.siape": "SIAPE",
+    "proposto.cargo_funcao": "Cargo/Função",
+    "proposto.telefone": "Telefone",
+    "proposto.email": "E-mail",
+    "proposto.orgao.tipo": "Órgão de exercício",
+    "proposto.orgao.detalhe": "Detalhe do órgão",
+    "afastamento.ida": "Trechos de ida",
+    "afastamento.retorno": "Trechos de retorno",
+    "afastamento.ida.origem": "Origem (ida)",
+    "afastamento.ida.destino": "Destino (ida)",
+    "afastamento.ida.data_hora": "Data/hora da ida",
+    "afastamento.retorno.origem": "Origem (retorno)",
+    "afastamento.retorno.destino": "Destino (retorno)",
+    "afastamento.retorno.data_hora": "Data/hora do retorno",
+    "atividades_desenvolvidas": "Atividades desenvolvidas",
+    "alteracoes_cancelamentos_noshow": "Alterações / Cancelamentos / No Show",
+    "justificativa_prestacao_contas_fora_prazo": "Justificativa fora do prazo",
+    "viagem_realizada": "Viagem realizada?"
+  };
+  return map[field] || field;
 }
 
 /* Importação a partir do Anexo I (Docling) */
@@ -2249,14 +2430,18 @@ document.getElementById("btnNext").addEventListener("click", () => {
   gotoStep(current + 1);
 });
 document.getElementById("btnDocx").addEventListener("click", async () => {
-  for(let i=1;i<=total;i++){
-    if(!validateStep(i)){ gotoStep(i); return; }
+  const allErrors = collectAllStepErrors();
+  if(allErrors.length){
+    openValidationModal2(allErrors);
+    return;
   }
   await generate("docx");
 });
 document.getElementById("btnPdf").addEventListener("click", async () => {
-  for(let i=1;i<=total;i++){
-    if(!validateStep(i)){ gotoStep(i); return; }
+  const allErrors = collectAllStepErrors();
+  if(allErrors.length){
+    openValidationModal2(allErrors);
+    return;
   }
   await generate("pdf");
 });
