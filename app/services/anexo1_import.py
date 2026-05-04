@@ -43,7 +43,7 @@ def _line_looks_like_label_start(line: str) -> bool:
         "nome", "cargo", "função", "cpf", "rg", "passaporte", "data", "siape",
         "mãe", "endereço", "telefone", "email", "e-mail", "banco", "agência",
         "conta", "local", "destino", "origem", "dados", "descrição", "débito",
-        "missão", "identificação", "lotação", "órgão", "nº",
+        "missão", "identificação", "lotação", "órgão", "lotação/órgão", "nº",
     ]
     first_word = stripped.split()[0].lower().rstrip(":")
     return first_word in label_starters
@@ -178,12 +178,28 @@ def find_with_stop(label_regex: str, text: str) -> Optional[str]:
     val = m.group(1).strip()
     # Remove separadores de célula de tabela que podem sobrar
     val = val.strip("|").strip()
+    # If the captured value itself starts with a known label, it's likely a false capture
+    # caused by an empty field whose value leaked from the next line
+    if _line_looks_like_label_start(val):
+        return None
     return val
 
 
 def find_block(start_pat: str, end_pat: str, text: str) -> Optional[str]:
     m = re.search(start_pat + r"(.*?)" + end_pat, text, flags=re.IGNORECASE | re.DOTALL)
     return m.group(1).strip() if m else None
+
+
+def find_one_with_stop(label_regex: str, text: str) -> Optional[str]:
+    """Like find_one but stops at the next known label (or end)."""
+    pattern = rf"(?:{label_regex})\s*:\s*(.+?)\s*(?={STOP_LABELS_PATTERN}|$)"
+    m = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+    if not m:
+        return None
+    val = m.group(1).strip().strip("|").strip()
+    if _line_looks_like_label_start(val):
+        return None
+    return val
 
 
 def _is_checked(text: str, label: str) -> bool:
@@ -497,6 +513,12 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
             hora_val = find_one(r"Hora:\s*(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
             if data_val and hora_val:
                 dh = f"{data_val} {hora_val}"
+        # Ultimate fallback: scan block for any date+time pairs
+        if not dh:
+            dates = re.findall(r"[0-3]\d/[0-1]\d/\d{4}", block)
+            times = re.findall(r"\d{2}:\d{2}", block)
+            if dates and times:
+                dh = f"{dates[0]} {times[0]}"
         return {
             "local_origem": origem,
             "local_destino": destino,
@@ -577,7 +599,16 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
                 return m.group(1).strip()
         return None
 
-    nasc = find_with_stop(r"Data de Nascimento", block) or _find_dob(block)
+    nasc = find_with_stop(r"Data de Nascimento", block)
+    if nasc:
+        # If value contains a date, extract just the date (discard surrounding text)
+        m = re.search(r"([0-3]\d/[0-1]\d/\d{4})", nasc)
+        if m:
+            nasc = m.group(1)
+        else:
+            nasc = None
+    if not nasc:
+        nasc = _find_dob(block)
     # Ultimate fallback: any DD/MM/YYYY in the identification block is likely the DOB
     if not nasc:
         dates = re.findall(r"([0-3]\d)[/.-]([0-1]\d)[/.-](\d{4})", block)
@@ -611,8 +642,8 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
     conta = find_with_stop(r"Conta", block) or find_one(r"Conta:\s*([0-9]+)", block)
     if conta:
         conta = re.sub(r"\s*(?:Banc[aá]rios:?|Dados\s+Banc[aá]rios:?|\s*DESCRIÇ[ÃA]O\s+DO\s+MOTIVO.*)$", "", conta, flags=re.IGNORECASE).strip()
-    passaporte = find_with_stop(r"Nº do Passaporte|Passaporte", block) or find_one(r"Passaporte:\s*(.+)", block)
-    lotacao = find_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block) or find_one(r"Lota[cç][ãa]o/Órgão:\s*(.+)", block)
+    passaporte = find_with_stop(r"Nº do Passaporte|Passaporte", block) or find_one_with_stop(r"Nº do Passaporte|Passaporte", block)
+    lotacao = find_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block) or find_one_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block)
 
     return {
         "nome_completo": nome,
@@ -659,32 +690,16 @@ def _fix_pdf_extraction_artifacts(text: str) -> str:
     In generated PDFs, adjacent cells on the same row may get merged
     into a single line by pdfplumber (e.g. Passaporte + Lotação/Órgão).
     """
-    # Flexible whitespace helper: use \s+ between words
-    # Fix variant 1: Nº do Passaporte (Obrigatório em Lotação/Órgão: X viagens internacionais): Y
+    # Comprehensive fix for Passaporte + Lotação + Data de Nascimento contamination
+    # This handles multiple LibreOffice layout variants in one shot:
+    #   Nº do Passaporte (Obrigatório | Lotação/Órgão: [value] Data de Nascimento: DD/MM/YYYY em viagens internacionais): Data de Nascimento: DD/MM/YYYY
     text = re.sub(
-        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s+em\s+Lotação/Órgão:\s*([^\s)]+)\s+viagens\s+internacionais\):\s*([A-Z0-9]+)",
-        r"Nº do Passaporte (Obrigatório em viagens internacionais): \2\nLotação/Órgão: \1",
-        text,
-        flags=re.IGNORECASE,
-    )
-    # Fix variant 2: value inside parenthetical before label text
-    text = re.sub(
-        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s+em\s+([A-Z0-9]+)\s+viagens\s+internacionais\):\s*Lotação/Órgão:\s*\|?\s*([^\s]+)",
-        r"Nº do Passaporte (Obrigatório em viagens internacionais): \1\nLotação/Órgão: \2",
-        text,
-        flags=re.IGNORECASE,
-    )
-    # Generic variant with possible extra words inside parenthetical
-    text = re.sub(
-        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s+em\s+Lotação/Órgão:\s*([^\s)]+)\s+([^)]+)\):\s*([A-Z0-9]+)",
-        r"Nº do Passaporte (Obrigatório em \2): \3\nLotação/Órgão: \1",
-        text,
-        flags=re.IGNORECASE,
-    )
-    # Variant 4: columns separated by |  e.g. Nº do Passaporte (Obrigatório | Lotação/Órgão: CCHSA em viagens internacionais): XY123456
-    text = re.sub(
-        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s*\|\s*Lotação/Órgão:\s*([^\s|]+)\s+em\s+viagens\s+internacionais\):\s*([A-Z0-9]+)",
-        r"Nº do Passaporte (Obrigatório em viagens internacionais): \2\nLotação/Órgão: \1",
+        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s*\|\s*Lotação/Órgão:\s*([^\n)]*?)\s*Data\s+de\s+Nascimento:\s*(\d{2}/\d{2}/\d{4})\s+em\s+viagens\s+internacionais\)\s*:\s*Data\s+de\s+Nascimento:\s*\2",
+        lambda m: (
+            f"Nº do Passaporte (Obrigatório em viagens internacionais):\n"
+            f"Lotação/Órgão: {m.group(1).strip() or ''}\n"
+            f"Data de Nascimento: {m.group(2)}"
+        ),
         text,
         flags=re.IGNORECASE,
     )
