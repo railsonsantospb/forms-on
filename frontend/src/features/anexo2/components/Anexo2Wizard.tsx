@@ -203,19 +203,17 @@ export function Anexo2Wizard() {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'issues' in err) {
         const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
-        const seen = new Set<string>()
-        const result: Array<{ path: string; field: string; message: string }> = []
+        // Mantém o último erro de cada path (mais específico, ex: .refine depois de .length)
+        const lastByPath = new Map<string, { path: string; field: string; message: string }>()
         for (const issue of issues) {
           const path = issue.path.join('.')
-          if (seen.has(path)) continue
-          seen.add(path)
-          result.push({
+          lastByPath.set(path, {
             path,
             field: getFieldLabel(path),
             message: issue.message,
           })
         }
-        return result
+        return Array.from(lastByPath.values())
       }
       return []
     }
