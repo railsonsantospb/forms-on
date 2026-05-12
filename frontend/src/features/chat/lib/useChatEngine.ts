@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import type { ChatFlowDefinition, ChatStateDefinition, ChatMessage, ChatEngineState } from '../types'
 
 function generateId() {
-  return Math.random().toString(36).slice(2, 10)
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
 }
 
 function getQuestion(state: ChatStateDefinition, data: Record<string, unknown>): string {
@@ -48,21 +48,6 @@ export function useChatEngine(flow: ChatFlowDefinition) {
     }
   })
 
-  // Auto-responde estados com autoValue
-  useEffect(() => {
-    const stateDef = getStateDef(engineState.currentStateId)
-    if (!stateDef || !stateDef.autoValue) return
-    const lastMsg = engineState.messages[engineState.messages.length - 1]
-    // Evita loop: só processa se a última mensagem foi do assistente (ainda não respondeu)
-    if (lastMsg?.role !== 'assistant') return
-    const value = typeof stateDef.autoValue === 'function' ? stateDef.autoValue(engineState.data) : stateDef.autoValue
-    const timeout = setTimeout(() => {
-      processReply(value)
-    }, 600)
-    return () => clearTimeout(timeout)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engineState.currentStateId, engineState.messages.length])
-
   const getStateDef = useCallback(
     (stateId: string): ChatStateDefinition | undefined => {
       return flowRef.current.states.find((s) => s.id === stateId)
@@ -89,7 +74,7 @@ export function useChatEngine(flow: ChatFlowDefinition) {
         }
 
         // Atualiza dados (sempre clona para evitar mutação do estado anterior)
-        let newData = stateDef.fieldPath
+        const newData = stateDef.fieldPath
           ? setPath(prev.data, stateDef.fieldPath, value)
           : { ...prev.data }
 
@@ -174,6 +159,20 @@ export function useChatEngine(flow: ChatFlowDefinition) {
     },
     [getStateDef],
   )
+
+  // Auto-responde estados com autoValue
+  useEffect(() => {
+    const stateDef = getStateDef(engineState.currentStateId)
+    if (!stateDef || !stateDef.autoValue) return
+    const lastMsg = engineState.messages[engineState.messages.length - 1]
+    // Evita loop: só processa se a última mensagem foi do assistente (ainda não respondeu)
+    if (lastMsg?.role !== 'assistant') return
+    const value = typeof stateDef.autoValue === 'function' ? stateDef.autoValue(engineState.data) : stateDef.autoValue
+    const timeout = setTimeout(() => {
+      processReply(value)
+    }, 600)
+    return () => clearTimeout(timeout)
+  }, [engineState.currentStateId, engineState.data, engineState.messages, getStateDef, processReply])
 
   const reset = useCallback(() => {
     const flow = flowRef.current

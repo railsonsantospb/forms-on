@@ -31,9 +31,9 @@ export const anexo2Schema = z.object({
     nome: z.string().min(3, 'Informe o nome completo').max(120, 'Máximo 120 caracteres'),
     cpf: z.string().length(11, 'CPF deve ter 11 dígitos').refine(isCPF, 'CPF inválido'),
     siape: z.string().regex(/^\d{4,15}$/, 'SIAPE deve ter 4 a 15 dígitos'),
-    cargo_funcao: z.string().max(80, 'Máximo 80 caracteres').optional(),
-    telefone: z.string().regex(/^\d{10,11}$/, 'Telefone inválido').optional(),
-    email: z.string().email('E-mail inválido').max(120, 'Máximo 120 caracteres').optional(),
+    cargo_funcao: z.string().min(1, 'Informe o cargo/função').max(80, 'Máximo 80 caracteres'),
+    telefone: z.string().regex(/^\d{10,11}$/, 'Telefone inválido'),
+    email: z.string().email('E-mail inválido').max(120, 'Máximo 120 caracteres'),
     orgao: z.object({
       tipo: z.enum(['cchsa', 'cavn', 'projetos', 'outros'], {
         message: 'Selecione o órgão',

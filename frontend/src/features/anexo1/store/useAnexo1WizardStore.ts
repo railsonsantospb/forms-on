@@ -4,7 +4,7 @@ import { todayISO } from '@/lib/dates'
 
 const TOTAL_STEPS = 9
 
-const defaultFormData: Partial<Anexo1Payload> = {
+export const defaultFormData: Partial<Anexo1Payload> = {
   tipo_solicitacao: 'diarias',
   data_solicitacao: todayISO(),
   servidor: {

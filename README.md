@@ -60,7 +60,7 @@ Se não tiver Docker, veja as instruções em https://docs.docker.com/get-docker
 
 3. **Abra no navegador:**
    ```
-   http://localhost:8000
+   http://localhost:8090
    ```
 
 Pronto! O sistema está rodando. Você verá a página inicial com os dois formulários disponíveis.
@@ -74,7 +74,7 @@ Se preferir rodar localmente sem Docker:
 
 2. **Instale as dependências:**
    ```bash
-   pip install fastapi uvicorn python-docx python-multipart requests jsonschema pydantic
+   pip install -r requirements.txt
    ```
 
 3. **Instale o LibreOffice (necessário para converter para PDF):**
@@ -84,10 +84,10 @@ Se preferir rodar localmente sem Docker:
 
 4. **Inicie o servidor:**
    ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8090
    ```
 
-5. **Abra no navegador:** `http://localhost:8000`
+5. **Abra no navegador:** `http://localhost:8090`
 
 ---
 
@@ -149,7 +149,7 @@ ufpb-wizard/
 
 ### Fluxo básico (Passo a passo)
 
-1. **Acesse a página inicial:** `http://localhost:8000`
+1. **Acesse a página inicial:** `http://localhost:8090` com Docker, ou `http://localhost:8090` se estiver rodando localmente com `uvicorn`.
 
 2. **Escolha o tipo de formulário:**
    - Clique em "Anexo I" se é uma requisição de viagem
@@ -193,7 +193,8 @@ Se passar do prazo, o sistema vai avisar e pedir uma justificativa.
 | **Pydantic** | Valida dados que chegam do navegador | Garante que os dados estão no formato correto |
 | **Python-DOCX** | Preenche arquivos Word programaticamente | Lê o template e substitui os campos marcados |
 | **LibreOffice** | Converte DOCX para PDF | Roda sem interface gráfica (headless) |
-| **HTML5 + CSS3 + JavaScript (ES6+)** | Interface no navegador | Sem dependências de frameworks (vanilla JS) — mais leve |
+| **React + TypeScript + Vite** | Interface principal no navegador | Wizard moderno, componentes reutilizáveis e build estático servido pelo FastAPI |
+| **HTML5 + CSS3 + JavaScript (ES6+)** | Interface legada/fallback | Usada apenas quando não há build React disponível |
 | **Docker + Docker Compose** | Empacota tudo e roda em qualquer máquina | Garante que funciona igual no seu PC, servidor, etc |
 
 ---
@@ -251,20 +252,7 @@ Resultado final:
 
 ## 📦 Versões das bibliotecas
 
-As bibliotecas Python são instaladas **sem versões fixas** no `Dockerfile`. Isso significa:
-
-| Vantagem | Desvantagem |
-|---|---|
-| Sempre tem as últimas correções de segurança | Pode haver pequenas diferenças entre builds em datas diferentes |
-
-Se você precisa de **resultados 100% consistentes** (ex: em produção), adicione números de versão ao Dockerfile:
-
-```dockerfile
-RUN pip install \
-    fastapi==0.104.1 \
-    uvicorn==0.24.0 \
-    python-docx==0.8.11
-```
+As bibliotecas Python ficam fixadas em `requirements.txt`, e o `Dockerfile` instala exatamente esse arquivo. Ao atualizar dependências, ajuste o `requirements.txt` e reconstrua a imagem.
 
 ---
 
@@ -277,7 +265,7 @@ docker-compose ps
 
 ### Ver logs da aplicação
 ```bash
-docker-compose logs -f app
+docker-compose logs -f wizard
 ```
 
 ### Parar a aplicação

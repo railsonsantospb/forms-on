@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 from datetime import datetime, date, timedelta
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 from app.settings import settings
 from app.services.placeholders import build_placeholders_anexo1, build_rows_anexo1
 
+
 def _parse_date(s: str) -> date:
     return date.fromisoformat(s)
+
 
 def _parse_dt(s: str) -> datetime:
     # ISO 8601 com timezone funciona; sem timezone também.
     return datetime.fromisoformat(s)
 
+
 def _is_with_passagens(tipo_solicitacao: str) -> bool:
     return tipo_solicitacao in ("passagens", "diarias_e_passagens")
+
 
 def _normalize_trecho_list(value: Any) -> list[Dict[str, Any]]:
     if isinstance(value, list):
@@ -22,6 +26,7 @@ def _normalize_trecho_list(value: Any) -> list[Dict[str, Any]]:
     if isinstance(value, dict):
         return [value]
     return []
+
 
 def _fmt_dt_opt(value: Any) -> str:
     if not value:
@@ -31,10 +36,16 @@ def _fmt_dt_opt(value: Any) -> str:
     except Exception:
         return ""
 
+
 def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
     errors = []
 
     # obrigatórios mínimos (wizard garante, mas backend reforça)
+    servidor = payload.get("servidor") or {}
+    vinculos_validos = {"servidor", "nao_servidor", "sepe", "acompanhante_pcd", "outro"}
+    if (servidor.get("tipo_vinculo") or "") not in vinculos_validos:
+        errors.append({"field": "servidor.tipo_vinculo", "message": "Selecione o tipo de vínculo."})
+
     tipo = payload.get("tipo_solicitacao")
     if tipo not in ("diarias", "passagens", "diarias_e_passagens"):
         errors.append({"field": "tipo_solicitacao", "message": "Selecione o tipo de solicitação."})
@@ -55,11 +66,15 @@ def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
         errors.append({"field": "trechos.retorno", "message": "Informe ao menos um trecho de retorno."})
     for t in ida_list:
         if not t.get("data_hora"):
-            errors.append({"field": "trechos.ida", "message": "Informe datas/horas válidas para todos os trechos de ida."})
+            errors.append(
+                {"field": "trechos.ida", "message": "Informe datas/horas válidas para todos os trechos de ida."}
+            )
             break
     for t in ret_list:
         if not t.get("data_hora"):
-            errors.append({"field": "trechos.retorno", "message": "Informe datas/horas válidas para todos os trechos de retorno."})
+            errors.append(
+                {"field": "trechos.retorno", "message": "Informe datas/horas válidas para todos os trechos de retorno."}
+            )
             break
 
     # datas principais (usa primeiro/último trecho)
@@ -94,21 +109,43 @@ def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     for i, t in enumerate(ida_list):
         if _norm_cidade(t.get("origem")) == _norm_cidade(t.get("destino")):
-            errors.append({"field": f"trechos.ida.{i}.destino", "message": "A origem e o destino não podem ser a mesma cidade."})
+            errors.append(
+                {"field": f"trechos.ida.{i}.destino", "message": "A origem e o destino não podem ser a mesma cidade."}
+            )
     for i, t in enumerate(ret_list):
         if _norm_cidade(t.get("origem")) == _norm_cidade(t.get("destino")):
-            errors.append({"field": f"trechos.retorno.{i}.destino", "message": "A origem e o destino não podem ser a mesma cidade."})
+            errors.append(
+                {
+                    "field": f"trechos.retorno.{i}.destino",
+                    "message": "A origem e o destino não podem ser a mesma cidade.",
+                }
+            )
 
     for i in range(len(ida_list) - 1):
         if _norm_cidade(ida_list[i].get("destino")) != _norm_cidade(ida_list[i + 1].get("origem")):
-            errors.append({"field": f"trechos.ida.{i + 1}.origem", "message": f"O destino do trecho {i + 1} deve ser a origem do trecho {i + 2}."})
+            errors.append(
+                {
+                    "field": f"trechos.ida.{i + 1}.origem",
+                    "message": f"O destino do trecho {i + 1} deve ser a origem do trecho {i + 2}.",
+                }
+            )
     for i in range(len(ret_list) - 1):
         if _norm_cidade(ret_list[i].get("destino")) != _norm_cidade(ret_list[i + 1].get("origem")):
-            errors.append({"field": f"trechos.retorno.{i + 1}.origem", "message": f"O destino do trecho {i + 1} deve ser a origem do trecho {i + 2}."})
+            errors.append(
+                {
+                    "field": f"trechos.retorno.{i + 1}.origem",
+                    "message": f"O destino do trecho {i + 1} deve ser a origem do trecho {i + 2}.",
+                }
+            )
 
     if ida_list and ret_list:
         if _norm_cidade(ida_list[-1].get("destino")) != _norm_cidade(ret_list[0].get("origem")):
-            errors.append({"field": "trechos.retorno.0.origem", "message": "O destino da ida deve ser o mesmo que a origem do retorno."})
+            errors.append(
+                {
+                    "field": "trechos.retorno.0.origem",
+                    "message": "O destino da ida deve ser o mesmo que a origem do retorno.",
+                }
+            )
 
     # flags
     flags = payload.get("flags") or {}
@@ -124,37 +161,32 @@ def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
     # fim de semana/feriado/dia anterior: mínimo viável sem base de feriados
     if ida:
         is_weekend = ida.weekday() in (5, 6)  # sábado/domingo
-        flags.setdefault("envolve_fds_feriado_ou_dia_anterior", is_weekend)
+        flags["envolve_fds_feriado_ou_dia_anterior"] = is_weekend
     else:
         flags.setdefault("envolve_fds_feriado_ou_dia_anterior", False)
 
     # justificativas condicionais
     just = payload.get("justificativas") or {}
     if flags.get("fora_do_prazo") and not (just.get("justificativa_fora_prazo") or "").strip():
-        errors.append({"field": "justificativas.justificativa_fora_prazo", "message": "Solicitação fora do prazo. Informe a justificativa."})
+        errors.append(
+            {
+                "field": "justificativas.justificativa_fora_prazo",
+                "message": "Solicitação fora do prazo. Informe a justificativa.",
+            }
+        )
 
-    if flags.get("envolve_fds_feriado_ou_dia_anterior") and not (just.get("justificativa_fds_feriado_dia_anterior") or "").strip():
-        errors.append({"field": "justificativas.justificativa_fds_feriado_dia_anterior", "message": "Informe a justificativa para viagem em fim de semana/feriado ou saída no dia anterior."})
+    if flags.get("envolve_fds_feriado_ou_dia_anterior") and not (
+        just.get("justificativa_fds_feriado_dia_anterior") or ""
+    ).strip():
+        errors.append(
+            {
+                "field": "justificativas.justificativa_fds_feriado_dia_anterior",
+                "message": "Informe a justificativa para viagem em fim de semana/feriado ou saída no dia anterior.",
+            }
+        )
 
     if errors:
         return {"ok": False, "errors": errors, "flags": flags}
-
-    ida_rows = [
-        {
-            "ida_origem": t.get("origem") or "",
-            "ida_destino": t.get("destino") or "",
-            "ida_data_hora": _fmt_dt_opt(t.get("data_hora")),
-        }
-        for t in ida_list
-    ]
-    ret_rows = [
-        {
-            "retorno_origem": t.get("origem") or "",
-            "retorno_destino": t.get("destino") or "",
-            "retorno_data_hora": _fmt_dt_opt(t.get("data_hora")),
-        }
-        for t in ret_list
-    ]
 
     placeholders = build_placeholders_anexo1(payload, flags)
     rows = build_rows_anexo1(payload["trechos"])

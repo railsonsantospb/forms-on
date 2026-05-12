@@ -3,6 +3,14 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+
+class LibreOfficeNotAvailableError(Exception):
+    """LibreOffice (soffice) não está instalado ou não está no PATH."""
+
+    def __init__(self, message: str = "LibreOffice não está disponível.") -> None:
+        super().__init__(message)
+
+
 def convert_docx_to_pdf(docx_path: Path) -> Path:
     out_dir = docx_path.parent
     # Perfil temporário do LibreOffice em /tmp (container read-only não permite ~/.config)
@@ -19,7 +27,12 @@ def convert_docx_to_pdf(docx_path: Path) -> Path:
         "--outdir", str(out_dir),
         str(docx_path),
     ]
-    subprocess.run(cmd, check=True, timeout=30)
+    try:
+        subprocess.run(cmd, check=True, timeout=30)
+    except FileNotFoundError as exc:
+        raise LibreOfficeNotAvailableError(
+            "LibreOffice não encontrado. Instale-o ou use o Docker."
+        ) from exc
 
     pdf_path = out_dir / (docx_path.stem + ".pdf")
     if not pdf_path.exists():

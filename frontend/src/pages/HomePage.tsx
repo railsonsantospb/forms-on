@@ -73,7 +73,7 @@ export function HomePage() {
           <InfoCard
             icon={<Clock size={20} className="text-[var(--color-accent)]" />}
             title="Prazos"
-            text="A solicitação de diárias deve ser enviada com antecedência mínima de 10 dias úteis antes do início da viagem."
+            text="A solicitação de diárias deve ser enviada com antecedência mínima de 10 dias antes do início da viagem."
           />
           <InfoCard
             icon={<AlertTriangle size={20} className="text-[var(--color-warning)]" />}
@@ -93,7 +93,7 @@ export function HomePage() {
           <InfoCard
             icon={<CalendarDays size={20} className="text-[var(--color-accent-2)]" />}
             title="Relatório pós-viagem"
-            text="O Anexo II deve ser preenchido em até 5 dias úteis após o retorno da viagem, com descrição das atividades."
+            text="O Anexo II deve ser preenchido em até 5 dias após o retorno da viagem, com descrição das atividades."
           />
           <InfoCard
             icon={<ShieldCheck size={20} className="text-[var(--color-success)]" />}

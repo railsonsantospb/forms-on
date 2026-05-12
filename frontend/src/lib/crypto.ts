@@ -1,5 +1,5 @@
 /**
- * Utilitários de criptografia para proteger dados sensíveis no localStorage.
+ * Utilitários de criptografia para proteger dados sensíveis no sessionStorage.
  * Usa AES-GCM via Web Crypto API.
  */
 
@@ -8,7 +8,7 @@ const KEY_LENGTH = 256
 const IV_LENGTH = 12
 
 async function getOrCreateKey(): Promise<CryptoKey> {
-  const stored = localStorage.getItem('__ufpb_key__')
+  const stored = sessionStorage.getItem('__ufpb_key__')
   
   if (stored) {
     const keyData = Uint8Array.from(atob(stored), c => c.charCodeAt(0))
@@ -29,7 +29,7 @@ async function getOrCreateKey(): Promise<CryptoKey> {
   
   const exported = await crypto.subtle.exportKey('raw', key)
   const exportedArray = new Uint8Array(exported)
-  localStorage.setItem('__ufpb_key__', btoa(String.fromCharCode(...exportedArray)))
+  sessionStorage.setItem('__ufpb_key__', btoa(String.fromCharCode(...exportedArray)))
   
   return key
 }

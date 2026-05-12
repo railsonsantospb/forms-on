@@ -56,7 +56,7 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
       fieldPath: 'proposto.siape',
       custom: (v) => (isSiape(v.replace(/\D/g, '')) ? null : 'SIAPE inválido'),
     }),
-    makeText('proposto.cargo', 'Qual é o seu cargo ou função?', 'proposto.telefone', { fieldPath: 'proposto.cargo_funcao', max: 80 }),
+    makeText('proposto.cargo', 'Qual é o seu cargo ou função?', 'proposto.telefone', { fieldPath: 'proposto.cargo_funcao', min: 1, max: 80 }),
     makeText('proposto.telefone', 'Me passa um telefone de contato com DDD (só números).', 'proposto.email', {
       fieldPath: 'proposto.telefone',
       custom: (v) => (isPhoneDigits(v) ? null : 'Telefone inválido'),
@@ -84,12 +84,12 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
     makeText('afastamento.ida.origem', 'De qual cidade você saiu? (Cidade/UF)', 'afastamento.ida.destino', {
       fieldPath: 'afastamento.ida.0.origem',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
     }),
     makeText('afastamento.ida.destino', 'Para qual cidade você foi? (Cidade/UF)', 'afastamento.ida.data', {
       fieldPath: 'afastamento.ida.0.destino',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
     }),
     {
       id: 'afastamento.ida.data',
@@ -102,12 +102,12 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
     makeText('afastamento.retorno.origem', 'Qual cidade foi a origem do retorno? (Cidade/UF)', 'afastamento.retorno.destino', {
       fieldPath: 'afastamento.retorno.0.origem',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
     }),
     makeText('afastamento.retorno.destino', 'Qual cidade foi o destino do retorno? (Cidade/UF)', 'afastamento.retorno.data', {
       fieldPath: 'afastamento.retorno.0.destino',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
     }),
     {
       id: 'afastamento.retorno.data',

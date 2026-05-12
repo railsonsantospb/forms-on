@@ -1,6 +1,7 @@
 """Rate limiting para a aplicação."""
 from __future__ import annotations
 
+import logging
 import time
 from collections import defaultdict
 from functools import wraps
@@ -8,18 +9,20 @@ from typing import Callable
 
 from fastapi import Request, HTTPException
 
+logger = logging.getLogger("security")
+
 
 class RateLimiter:
     """Rate limiter simples baseado em memória (IP-based) com auto-limpeza."""
-    
+
     MAX_IPS = 10_000  # Limite para evitar memory leak em ataques distribuídos
     CLEANUP_INTERVAL = 300  # Segundos entre limpezas globais
-    
+
     def __init__(self, requests_per_minute: int = 60):
         self.requests_per_minute = requests_per_minute
         self.requests: dict[str, list[float]] = defaultdict(list)
         self._last_cleanup = time.time()
-    
+
     def _cleanup_old(self, now: float) -> None:
         """Remove entradas expiradas e limita número total de IPs."""
         window_start = now - 60
@@ -30,10 +33,10 @@ class RateLimiter:
                 self.requests[key] = valid
             else:
                 keys_to_remove.append(key)
-        
+
         for key in keys_to_remove:
             del self.requests[key]
-        
+
         # Se ainda há muitos IPs, remove os mais antigos (LRU-like)
         if len(self.requests) > self.MAX_IPS:
             sorted_keys = sorted(
@@ -42,34 +45,34 @@ class RateLimiter:
             )
             for key in sorted_keys[:len(self.requests) - self.MAX_IPS]:
                 del self.requests[key]
-        
+
         self._last_cleanup = now
-    
+
     def is_allowed(self, key: str) -> bool:
         now = time.time()
         window_start = now - 60  # janela de 1 minuto
-        
+
         # Limpa requisições antigas
         self.requests[key] = [
-            ts for ts in self.requests[key] 
+            ts for ts in self.requests[key]
             if ts > window_start
         ]
-        
+
         # Limpeza global periódica para evitar memory leak
         if now - self._last_cleanup > self.CLEANUP_INTERVAL:
             self._cleanup_old(now)
-        
+
         if len(self.requests[key]) >= self.requests_per_minute:
             return False
-        
+
         self.requests[key].append(now)
         return True
-    
+
     def get_remaining(self, key: str) -> int:
         now = time.time()
         window_start = now - 60
         self.requests[key] = [
-            ts for ts in self.requests[key] 
+            ts for ts in self.requests[key]
             if ts > window_start
         ]
         return max(0, self.requests_per_minute - len(self.requests[key]))
@@ -82,7 +85,7 @@ limiter = RateLimiter(requests_per_minute=30)
 def rate_limit(requests_per_minute: int = 30):
     """Decorator para rate limiting em endpoints específicos."""
     endpoint_limiter = RateLimiter(requests_per_minute=requests_per_minute)
-    
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -91,22 +94,32 @@ def rate_limit(requests_per_minute: int = 30):
                 if isinstance(arg, Request):
                     request = arg
                     break
-            
+
             if request is None:
                 for key, val in kwargs.items():
                     if isinstance(val, Request):
                         request = val
                         break
-            
+
             if request:
-                client_ip = request.client.host if request.client else "unknown"
+                # X-Real-IP é setado pelo nginx com o IP real do cliente.
+                # Fallback para request.client.host em desenvolvimento local.
+                client_ip = (
+                    request.headers.get("x-real-ip")
+                    or (request.client.host if request.client else "unknown")
+                )
                 if not endpoint_limiter.is_allowed(client_ip):
+                    logger.warning(
+                        "rate_limit_exceeded ip=%s endpoint=%s",
+                        client_ip,
+                        request.url.path,
+                    )
                     raise HTTPException(
                         status_code=429,
                         detail="Muitas requisições. Tente novamente em alguns segundos."
                     )
-            
+
             return await func(*args, **kwargs)
-        
+
         return wrapper
     return decorator

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.services.anexo1_import import (
-    STOP_LABELS_PATTERN,
     _extract_text,
     _is_checked,
     _parse_br_date,
@@ -16,7 +15,6 @@ from app.services.anexo1_import import (
     find_block,
     find_one,
     find_with_stop,
-    normalize_text,
 )
 
 
@@ -146,7 +144,11 @@ def parse_afastamento(text: str) -> Dict[str, Any]:
         m = re.search(r"IDA:\s*(.+?)\s*RETORNO:", block, flags=re.IGNORECASE | re.DOTALL)
         ida_block = m.group(1).strip() if m else ""
     if not ret_block:
-        m = re.search(r"RETORNO:\s*(.+?)(?:\nALTERAÇÕES|\nDESCRIÇÃO DA VIAGEM|$)", block, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(
+            r"RETORNO:\s*(.+?)(?:\nALTERAÇÕES|\nDESCRIÇÃO DA VIAGEM|$)",
+            block,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         ret_block = m.group(1).strip() if m else ""
 
     ida = parse_afastamento_trecho(ida_block)

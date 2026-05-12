@@ -27,7 +27,7 @@ Purpose: Help AI coding agents contribute safely and effectively to this FastAPI
   - PDF conversion requires LibreOffice (`soffice`) available in PATH; conversion is performed synchronously and raises on failure.
 
 - **Developer workflows:**
-  - Quick local dev server: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` (run from repo root so relative mounts/paths match).
+  - Quick local dev server: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8090` (run from repo root so relative mounts/paths match).
   - Docker: `docker-compose up --build` (there is a `Dockerfile` and `docker-compose.yml` in the repo).
   - To reproduce PDF issues locally, manually run the `soffice` command used in `app/services/pdf_convert.py` against a generated DOCX.
 

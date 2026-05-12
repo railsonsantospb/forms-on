@@ -40,7 +40,22 @@ export function useAnexo1Prefill() {
         method: 'POST',
         body: formData,
       })
-      if (!res.ok) throw new Error('Erro ao importar documento')
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({} as Record<string, unknown>))
+        const detail = (body as Record<string, unknown>).detail
+        const message = (body as Record<string, unknown>).message
+
+        let msg = 'Erro ao importar documento'
+        if (typeof detail === 'string' && detail.trim()) msg = detail
+        else if (typeof message === 'string' && message.trim()) msg = message
+        else if (detail && typeof detail === 'object' && 'detail' in detail && typeof (detail as { detail?: unknown }).detail === 'string') {
+          msg = (detail as { detail: string }).detail
+        }
+
+        throw new Error(msg)
+      }
+
       return res.json() as Promise<PrefillResponse>
     },
   })

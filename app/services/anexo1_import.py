@@ -411,7 +411,7 @@ def parse_justificativas(text: str) -> Dict[str, Optional[str]]:
     # Try to split the FDS value if it contains multiple lines and urgente is missing.
     fds_val = result.get("just_fds_feriado")
     if fds_val and "just_viagem_urgente" not in result and "\n" in fds_val:
-        lines = [l.strip() for l in fds_val.splitlines() if l.strip()]
+        lines = [line.strip() for line in fds_val.splitlines() if line.strip()]
         if len(lines) >= 2:
             result["just_viagem_urgente"] = lines[0]
             result["just_fds_feriado"] = "\n".join(lines[1:])
@@ -488,6 +488,7 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
             or find_one(r"Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
         )
         # Clean up leaked labels from adjacent cells/lines
+
         def _clean_destino(val: Optional[str]) -> str:
             if not val:
                 return ""
@@ -500,17 +501,25 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
 
         # Fallback: when "Cidade de Origem:" label is missing but city appears before "Cidade de Destino:"
         if not origem or re.fullmatch(r"\d{2}/\d{2}/\d{4}", origem):
-            m = re.search(r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s*\|\s*Cidade\s+de\s+Destino:", block, flags=re.IGNORECASE)
+            m = re.search(
+                r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s*\|\s*Cidade\s+de\s+Destino:", block, flags=re.IGNORECASE)
             if not m:
                 # Even looser: any city/state pattern before Destino
-                m = re.search(r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s+(?:Cidade\s+de\s+)?Destino:", block, flags=re.IGNORECASE)
+                m = re.search(
+                    r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s+(?:Cidade\s+de\s+)?Destino:",
+                    block,
+                    flags=re.IGNORECASE)
             if m:
                 origem = m.group(1).strip()
 
-        dh = find_one(r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})\s+(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+        dh = find_one(
+            r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})\s+(\d{2}:\d{2})",
+            block,
+            flags=re.IGNORECASE | re.DOTALL)
         # Also try separate Data + Hora lines
         if not dh:
-            data_val = find_one(r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})", block, flags=re.IGNORECASE | re.DOTALL)
+            data_val = find_one(
+                r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})", block, flags=re.IGNORECASE | re.DOTALL)
             hora_val = find_one(r"Hora:\s*(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
             if data_val and hora_val:
                 dh = f"{data_val} {hora_val}"
@@ -545,13 +554,18 @@ def parse_missao(text: str) -> Dict[str, Optional[str]]:
         m = re.search(r"DATA/HORA DA MISS[ÃA]O(?:/COMPROMISSO)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
         block = m.group(1).strip() if m else ""
 
-    inicio = find_one(r"Data/Hora In[ií]cio:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
-    termino = find_one(r"Data/Hora T[eé]rmino:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+    inicio = find_one(
+        r"Data/Hora In[ií]cio:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+    termino = find_one(
+        r"Data/Hora T[eé]rmino:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
 
-    # PDF extraction may place both dates after Término label (e.g. "Início: | Término: 10/06/2025 08:00 | 12/06/2025 18:00")
+    # PDF extraction may place both dates after Término label
+    # (e.g. "Início: | Término: 10/06/2025 08:00 | 12/06/2025 18:00")
     # In that case find_one captures the first date for termino and leaves inicio empty.
     m2 = re.search(
-        r"Data/Hora In[ií]cio:\s*\|?\s*Data/Hora T[eé]rmino:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})\s*\|\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})",
+        r"Data/Hora In[ií]cio:\s*\|?\s*Data/Hora T[eé]rmino:\s*"
+        r"([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})\s*\|\s*"
+        r"([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})",
         block,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -642,9 +656,14 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
     agencia = find_with_stop(r"Ag[êe]ncia", block) or find_one(r"Ag[êe]ncia:\s*([0-9]+)", block)
     conta = find_with_stop(r"Conta", block) or find_one(r"Conta:\s*([0-9]+)", block)
     if conta:
-        conta = re.sub(r"\s*(?:Banc[aá]rios:?|Dados\s+Banc[aá]rios:?|\s*DESCRIÇ[ÃA]O\s+DO\s+MOTIVO.*)$", "", conta, flags=re.IGNORECASE).strip()
-    passaporte = find_with_stop(r"Nº do Passaporte|Passaporte", block) or find_one_with_stop(r"Nº do Passaporte|Passaporte", block)
-    lotacao = find_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block) or find_one_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block)
+        conta = re.sub(r"\s*(?:Banc[aá]rios:?|Dados\s+Banc[aá]rios:?|\s*DESCRIÇ[ÃA]O\s+DO\s+MOTIVO.*)$",
+                       "", conta, flags=re.IGNORECASE).strip()
+    passaporte = find_with_stop(r"Nº do Passaporte|Passaporte", block) or find_one_with_stop(
+        r"Nº do Passaporte|Passaporte", block)
+    if passaporte and re.search(r"Lota[cç][ãa]o|Órgão|Obrigatório", passaporte, re.IGNORECASE):
+        passaporte = None
+    lotacao = find_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o",
+                             block) or find_one_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block)
 
     return {
         "nome_completo": nome,
@@ -664,9 +683,11 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
 
 
 def parse_motivo_viagem(text: str) -> Optional[str]:
-    block = find_block(r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*", r"(?:RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\))", text)
+    block = find_block(r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*",
+                       r"(?:RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\))", text)
     if block is None:
-        m = re.search(r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*(.+?)(?=RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\)|$)", text, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*(.+?)(?=RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\)|$)",
+                      text, flags=re.IGNORECASE | re.DOTALL)
         block = m.group(1).strip() if m else None
     return block.strip() if block else None
 
@@ -693,9 +714,13 @@ def _fix_pdf_extraction_artifacts(text: str) -> str:
     """
     # Comprehensive fix for Passaporte + Lotação + Data de Nascimento contamination
     # This handles multiple LibreOffice layout variants in one shot:
-    #   Nº do Passaporte (Obrigatório | Lotação/Órgão: [value] Data de Nascimento: DD/MM/YYYY em viagens internacionais): Data de Nascimento: DD/MM/YYYY
+    #   Nº do Passaporte (Obrigatório | Lotação/Órgão: [value]
+    #   Data de Nascimento: DD/MM/YYYY em viagens internacionais):
+    #   Data de Nascimento: DD/MM/YYYY
     text = re.sub(
-        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s*\|\s*Lotação/Órgão:\s*([^\n)]*?)\s*Data\s+de\s+Nascimento:\s*(\d{2}/\d{2}/\d{4})\s+em\s+viagens\s+internacionais\)\s*:\s*Data\s+de\s+Nascimento:\s*\2",
+        r"Nº\s+do\s+Passaporte\s+\(Obrigatório\s*\|\s*Lotação/Órgão:\s*"
+        r"([^\n)]*?)\s*Data\s+de\s+Nascimento:\s*(\d{2}/\d{2}/\d{4})\s+"
+        r"em\s+viagens\s+internacionais\)\s*:\s*Data\s+de\s+Nascimento:\s*\2",
         lambda m: (
             f"Nº do Passaporte (Obrigatório em viagens internacionais):\n"
             f"Lotação/Órgão: {m.group(1).strip() or ''}\n"

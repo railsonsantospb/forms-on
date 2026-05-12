@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, date, timezone
+from datetime import datetime, date
 from typing import Any, Dict
 
 
@@ -225,11 +225,17 @@ def build_placeholders_anexo2(payload: Dict[str, Any], flags: Dict[str, Any]) ->
 
         "retorno_origem": "\n".join((t.get("origem") or "") for t in _normalize_trechos(afast.get("retorno"))),
         "retorno_destino": "\n".join((t.get("destino") or "") for t in _normalize_trechos(afast.get("retorno"))),
-        "retorno_data_hora": "\n".join(_fmt_dt_opt(t.get("data_hora")) for t in _normalize_trechos(afast.get("retorno"))),
+        "retorno_data_hora": "\n".join(
+            _fmt_dt_opt(t.get("data_hora")) for t in _normalize_trechos(afast.get("retorno"))
+        ),
 
         "alteracoes_cancelamentos_noshow": payload.get("alteracoes_cancelamentos_noshow") or "",
 
-        "justificativa_prestacao_contas_fora_prazo": (payload.get("justificativa_prestacao_contas_fora_prazo") or "") if flags.get("prestacao_contas_fora_prazo") else "",
+        "justificativa_prestacao_contas_fora_prazo": (
+            (payload.get("justificativa_prestacao_contas_fora_prazo") or "")
+            if flags.get("prestacao_contas_fora_prazo")
+            else ""
+        ),
 
         "chk_viagem_realizada_sim": _x(payload.get("viagem_realizada") == "sim"),
         "chk_viagem_realizada_nao": _x(payload.get("viagem_realizada") == "nao"),

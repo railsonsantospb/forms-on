@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { ValidationErrorsModal } from '@/components/ui/modal'
-import { useAnexo2WizardStore } from '../store/useAnexo2WizardStore'
+import { useAnexo2WizardStore, defaultFormData as anexo2DefaultFormData } from '../store/useAnexo2WizardStore'
 import { WizardStepper } from '@/components/wizard/WizardStepper'
 import { WizardNavigation } from '@/components/wizard/WizardNavigation'
 import { StepTransition } from '@/components/wizard/StepTransition'
@@ -25,6 +25,8 @@ import { applyChatDataToForm } from '@/features/chat/lib/applyChatData'
 import { useAnexo2Preview, useAnexo2Generate, useAnexo2Prefill } from '@/api/anexo2'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useBeforeUnload } from '@/hooks/useBeforeUnload'
+import { isEquivalentToDefault } from '@/lib/object-utils'
+
 import { formatDateBR, formatDateTimeBR, daysDiff, todayISO } from '@/lib/dates'
 import { maskCPF, maskPhone, onlyDigits } from '@/lib/validators'
 import { anexo2Schema } from '@/features/anexo2/schemas/anexo2.schema'
@@ -69,8 +71,12 @@ export function Anexo2Wizard() {
     const doRestore = async () => {
       const saved = await restore()
       if (saved) {
-        store.applyPayload(saved)
-        toast.info('Rascunho anterior restaurado do navegador')
+        if (!isEquivalentToDefault(saved as Record<string, unknown>, anexo2DefaultFormData as Record<string, unknown>)) {
+          store.applyPayload(saved)
+          toast.info('Rascunho anterior restaurado do navegador')
+        } else {
+          clear() // Limpa rascunho vazio do sessionStorage
+        }
       }
     }
     doRestore()
@@ -106,7 +112,9 @@ export function Anexo2Wizard() {
         ida: data.afastamento?.ida || [],
         retorno: data.afastamento?.retorno || [],
       },
-      alteracoes_cancelamentos_noshow: data.alteracoes_cancelamentos_noshow || [],
+      alteracoes_cancelamentos_noshow: (data.alteracoes_cancelamentos_noshow || []).filter(
+        (row) => row.tipo && row.descricao?.trim()
+      ),
       atividades_tabela: data.atividades_tabela,
       flags: data.flags,
       justificativa_prestacao_contas_fora_prazo: data.justificativa_prestacao_contas_fora_prazo,
@@ -141,7 +149,7 @@ export function Anexo2Wizard() {
   const validateCurrentStep = useCallback((): boolean => {
     const payload = buildPayload()
     const step = store.currentStep
-    let errors: Record<string, string> = {}
+    const errors: Record<string, string> = {}
 
     try {
       anexo2Schema.parse(payload)
@@ -395,13 +403,13 @@ export function Anexo2Wizard() {
                   <FormField label="SIAPE" error={stepErrors['proposto.siape']} required>
                     <Input value={data.proposto?.siape || ''} onChange={(e) => store.setFieldValue('proposto.siape', onlyDigits(e.target.value))} placeholder="Somente números" />
                   </FormField>
-                  <FormField label="Cargo/Função">
+                  <FormField label="Cargo/Função" error={stepErrors['proposto.cargo_funcao']} required>
                     <Input value={data.proposto?.cargo_funcao || ''} onChange={(e) => store.setFieldValue('proposto.cargo_funcao', e.target.value)} />
                   </FormField>
-                  <FormField label="Telefone" error={stepErrors['proposto.telefone']}>
+                  <FormField label="Telefone" error={stepErrors['proposto.telefone']} required>
                     <Input value={maskPhone(data.proposto?.telefone || '')} onChange={(e) => store.setFieldValue('proposto.telefone', onlyDigits(e.target.value))} placeholder="(00) 00000-0000" />
                   </FormField>
-                  <FormField label="E-mail" error={stepErrors['proposto.email']}>
+                  <FormField label="E-mail" error={stepErrors['proposto.email']} required>
                     <Input value={data.proposto?.email || ''} onChange={(e) => store.setFieldValue('proposto.email', e.target.value)} placeholder="email@exemplo.com" />
                   </FormField>
                 </div>

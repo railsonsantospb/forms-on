@@ -4,7 +4,7 @@ import { todayISO } from '@/lib/dates'
 
 const TOTAL_STEPS = 7
 
-const defaultFormData: Partial<Anexo2Payload> = {
+export const defaultFormData: Partial<Anexo2Payload> = {
   data_relatorio: todayISO(),
   proposto: {
     nome: '',

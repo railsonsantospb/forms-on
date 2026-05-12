@@ -28,20 +28,13 @@ WORKDIR /app
 # Copia o backend
 COPY ./app /app/app
 COPY ./README.md /app/README.md
+COPY ./requirements.txt /app/requirements.txt
 
 # Copia o build do frontend
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 # Instala dependências Python
-RUN pip install --no-cache-dir \
-    fastapi \
-    uvicorn \
-    python-multipart \
-    pydantic \
-    jsonschema \
-    python-docx \
-    pdfplumber \
-    requests
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Cria diretórios necessários e ajusta permissões
 RUN mkdir -p /app/data /tmp && \

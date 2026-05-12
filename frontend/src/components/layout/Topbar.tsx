@@ -61,13 +61,13 @@ export function Topbar() {
     <header className="sticky top-0 z-50 backdrop-blur-md bg-[var(--color-surface)]/80 border-b border-[var(--color-border)]">
       <div className="max-w-[1040px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Branding */}
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <img src="/brasao.png" alt="UFPB" className="w-10 h-10 object-contain" />
           <div className="flex flex-col">
             <span className="text-sm font-semibold leading-tight">UFPB Forms On</span>
             <span className="text-[11px] text-[var(--color-subtle)] leading-tight">Diárias & Passagens</span>
           </div>
-        </div>
+        </Link>
 
         {/* Center nav */}
         {!isHome && (

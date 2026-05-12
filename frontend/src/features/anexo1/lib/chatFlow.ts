@@ -163,12 +163,12 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
     makeText('trechos.ida.origem', 'De qual cidade você vai sair? (Cidade/UF)', 'trechos.ida.destino', {
       fieldPath: 'trechos.ida.0.origem',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
     }),
     makeText('trechos.ida.destino', 'Para qual cidade você vai? (Cidade/UF)', 'trechos.ida.data', {
       fieldPath: 'trechos.ida.0.destino',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
     }),
     {
       id: 'trechos.ida.data',
@@ -181,12 +181,12 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
     makeText('trechos.retorno.origem', 'Qual cidade será a origem do retorno? (Cidade/UF)', 'trechos.retorno.destino', {
       fieldPath: 'trechos.retorno.0.origem',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: João Pessoa/PB)'),
     }),
     makeText('trechos.retorno.destino', 'Qual cidade será o destino do retorno? (Cidade/UF)', 'trechos.retorno.data', {
       fieldPath: 'trechos.retorno.0.destino',
       min: 2,
-      custom: (v) => (v.includes('/') ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
+      custom: (v) => (/^.+\/\s*[A-Za-z]{2}$/.test(v) ? null : 'Informe no formato Cidade/UF (ex: Recife/PE)'),
     }),
     {
       id: 'trechos.retorno.data',

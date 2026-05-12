@@ -20,3 +20,7 @@ data/*.pdf
 node_modules/
 frontend/dist/
 
+.venv/
+venv/
+data/
+.coverage

@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { ValidationErrorsModal } from '@/components/ui/modal'
-import { useAnexo1WizardStore } from '../store/useAnexo1WizardStore'
+import { useAnexo1WizardStore, defaultFormData as anexo1DefaultFormData } from '../store/useAnexo1WizardStore'
 import { WizardStepper } from '@/components/wizard/WizardStepper'
 import { WizardNavigation } from '@/components/wizard/WizardNavigation'
 import { StepTransition } from '@/components/wizard/StepTransition'
@@ -25,6 +25,8 @@ import { applyChatDataToForm } from '@/features/chat/lib/applyChatData'
 import { useAnexo1Preview, useAnexo1Generate, useAnexo1Prefill } from '@/api/anexo1'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useBeforeUnload } from '@/hooks/useBeforeUnload'
+import { isEquivalentToDefault } from '@/lib/object-utils'
+
 import { formatDateBR, formatDateTimeBR, isWeekend, daysDiff, todayISO } from '@/lib/dates'
 import { maskCPF, maskPhone, onlyDigits } from '@/lib/validators'
 import { anexo1Schema } from '@/features/anexo1/schemas/anexo1.schema'
@@ -86,32 +88,17 @@ export function Anexo1Wizard() {
     const doRestore = async () => {
       const saved = await restore()
       if (saved) {
-        store.applyPayload(saved)
-        toast.info('Rascunho anterior restaurado do navegador')
+        if (!isEquivalentToDefault(saved as Record<string, unknown>, anexo1DefaultFormData as Record<string, unknown>)) {
+          store.applyPayload(saved)
+          toast.info('Rascunho anterior restaurado do navegador')
+        } else {
+          clear() // Limpa rascunho vazio do sessionStorage
+        }
       }
     }
     doRestore()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Refresh auto flags when entering step 8
-  useEffect(() => {
-    if (store.currentStep === 8) {
-      refreshAutoFlags()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.currentStep])
-
-  // Sincroniza justificativas automáticas com campos do documento
-  useEffect(() => {
-    if (data.flags?.fora_do_prazo && data.justificativas?.justificativa_fora_prazo && !data.justificativas?.just_viagem_urgente?.trim()) {
-      store.setFieldValue('justificativas.just_viagem_urgente', data.justificativas.justificativa_fora_prazo)
-    }
-    if (data.flags?.envolve_fds_feriado_ou_dia_anterior && data.justificativas?.justificativa_fds_feriado_dia_anterior && !data.justificativas?.just_fds_feriado?.trim()) {
-      store.setFieldValue('justificativas.just_fds_feriado', data.justificativas.justificativa_fds_feriado_dia_anterior)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.flags?.fora_do_prazo, data.flags?.envolve_fds_feriado_ou_dia_anterior, data.justificativas?.justificativa_fora_prazo, data.justificativas?.justificativa_fds_feriado_dia_anterior])
 
   const refreshAutoFlags = useCallback(() => {
     const tipo = data.tipo_solicitacao || 'diarias'
@@ -137,6 +124,24 @@ export function Anexo1Wizard() {
       store.setFieldValue('flags.envolve_fds_feriado_ou_dia_anterior', true)
     }
   }, [data, store])
+
+  // Refresh auto flags when entering step 8
+  useEffect(() => {
+    if (store.currentStep === 8) {
+      refreshAutoFlags()
+    }
+  }, [store.currentStep, refreshAutoFlags])
+
+  // Sincroniza justificativas automáticas com campos do documento
+  useEffect(() => {
+    if (data.flags?.fora_do_prazo && data.justificativas?.justificativa_fora_prazo && !data.justificativas?.just_viagem_urgente?.trim()) {
+      store.setFieldValue('justificativas.just_viagem_urgente', data.justificativas.justificativa_fora_prazo)
+    }
+    if (data.flags?.envolve_fds_feriado_ou_dia_anterior && data.justificativas?.justificativa_fds_feriado_dia_anterior && !data.justificativas?.just_fds_feriado?.trim()) {
+      store.setFieldValue('justificativas.just_fds_feriado', data.justificativas.justificativa_fds_feriado_dia_anterior)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.flags?.fora_do_prazo, data.flags?.envolve_fds_feriado_ou_dia_anterior, data.justificativas?.justificativa_fora_prazo, data.justificativas?.justificativa_fds_feriado_dia_anterior])
 
   const buildPayload = useCallback((): Anexo1Payload => {
     // Garante que auxílio transporte/alimentação tenham `recebe` definido (schema exige)
@@ -215,7 +220,7 @@ export function Anexo1Wizard() {
   const validateCurrentStep = useCallback((): { valid: boolean; currentErrors: Record<string, string> } => {
     const payload = buildPayload()
     const step = store.currentStep
-    let currentStepErrors: Record<string, string> = {}
+    const currentStepErrors: Record<string, string> = {}
 
     try {
       anexo1Schema.parse(payload)
@@ -275,7 +280,7 @@ export function Anexo1Wizard() {
     const payload = buildPayload()
 
     // 1) Preview/validação no backend
-    let previewRes: { ok: boolean; errors?: Array<{ field: string; message: string }>; issues?: Array<{ field: string; message: string }> } | null = null
+    let previewRes: { ok: boolean; errors?: Array<{ field: string; message: string }>; issues?: Array<{ field: string; message: string }> }
     try {
       previewRes = await preview.mutateAsync(payload)
     } catch (err: unknown) {
@@ -442,7 +447,7 @@ export function Anexo1Wizard() {
                 <div className="border-t border-[var(--color-border)] pt-4">
                   <h4 className="text-sm font-semibold mb-3">Informações adicionais</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField label="Tipo de vínculo">
+                    <FormField label="Tipo de vínculo" error={stepErrors['servidor.tipo_vinculo']} required>
                       <Select value={data.servidor?.tipo_vinculo || ''} onChange={(e) => store.setFieldValue('servidor.tipo_vinculo', e.target.value)}>
                         <option value="">Selecione...</option>
                         <option value="servidor">Servidor</option>

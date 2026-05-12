@@ -59,7 +59,7 @@ export function formatDateTimeChat(isoDT: string): string {
   const hour = d.getHours()
   const minute = d.getMinutes()
   const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-  let period = ''
+  let period: string
   if (hour >= 5 && hour < 12) period = ' da manhã'
   else if (hour >= 12 && hour < 18) period = ' da tarde'
   else if (hour >= 18 && hour < 24) period = ' da noite'

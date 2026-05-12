@@ -17,7 +17,11 @@
   "properties": {
     "tipo_solicitacao": {
       "type": "string",
-      "enum": ["diarias", "passagens", "diarias_e_passagens"],
+      "enum": [
+        "diarias",
+        "passagens",
+        "diarias_e_passagens"
+      ],
       "description": "Seleção inicial. Determina prazo de fora do prazo (10 dias sem passagens; 30 dias com passagens)."
     },
     "data_solicitacao": {
@@ -39,52 +43,124 @@
         "endereco",
         "telefone",
         "email",
-        "dados_bancarios"
+        "dados_bancarios",
+        "tipo_vinculo"
       ],
       "properties": {
-        "nome_completo": { "type": "string", "minLength": 3, "maxLength": 120 },
-        "cargo_funcao": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "nome_completo": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "cargo_funcao": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
         "cpf": {
           "type": "string",
           "pattern": "^[0-9]{11}$",
           "description": "Somente números. (A validação do dígito verificador pode ser feita no frontend/backend.)"
         },
-        "rg": { "type": "string", "minLength": 3, "maxLength": 20 },
-        "data_nascimento": { "type": "string", "format": "date" },
-        "siape": { "type": "string", "pattern": "^[0-9]{4,15}$" },
-        "nome_mae": { "type": "string", "minLength": 3, "maxLength": 120 },
-        "endereco": { "type": "string", "minLength": 5, "maxLength": 200 },
+        "rg": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 20
+        },
+        "data_nascimento": {
+          "type": "string",
+          "format": "date"
+        },
+        "siape": {
+          "type": "string",
+          "pattern": "^[0-9]{4,15}$"
+        },
+        "nome_mae": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "endereco": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 200
+        },
         "telefone": {
           "type": "string",
           "pattern": "^[0-9]{10,11}$",
           "description": "DDD + número, somente números (10 ou 11 dígitos)."
         },
-        "email": { "type": "string", "format": "email", "maxLength": 120 },
-        "tipo_vinculo": { "type": "string", "enum": ["servidor", "nao_servidor", "sepe", "acompanhante_pcd", "outro"] },
-        "passaporte": { "type": "string", "maxLength": 40 },
-        "lotacao_orgao": { "type": "string", "maxLength": 120 },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 120
+        },
+        "tipo_vinculo": {
+          "type": "string",
+          "enum": [
+            "servidor",
+            "nao_servidor",
+            "sepe",
+            "acompanhante_pcd",
+            "outro"
+          ]
+        },
+        "passaporte": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "lotacao_orgao": {
+          "type": "string",
+          "maxLength": 120
+        },
         "auxilio_transporte": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "recebe": { "type": "boolean" },
-            "valor": { "type": "string", "maxLength": 40 }
+            "recebe": {
+              "type": "boolean"
+            },
+            "valor": {
+              "type": "string",
+              "maxLength": 40
+            }
           }
         },
         "auxilio_alimentacao": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "recebe": { "type": "boolean" },
-            "valor": { "type": "string", "maxLength": 40 }
+            "recebe": {
+              "type": "boolean"
+            },
+            "valor": {
+              "type": "string",
+              "maxLength": 40
+            }
           }
         },
         "dados_bancarios": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["banco", "agencia", "conta"],
+          "required": [
+            "banco",
+            "agencia",
+            "conta"
+          ],
           "properties": {
-            "banco": { "type": "string", "minLength": 2, "maxLength": 40 },
-            "agencia": { "type": "string", "pattern": "^[0-9]{1,10}$" },
-            "conta": { "type": "string", "pattern": "^[0-9]{1,20}$" }
+            "banco": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 40
+            },
+            "agencia": {
+              "type": "string",
+              "pattern": "^[0-9]{1,10}$"
+            },
+            "conta": {
+              "type": "string",
+              "pattern": "^[0-9]{1,20}$"
+            }
           }
         }
       }
@@ -101,33 +177,68 @@
     "trechos": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ida", "retorno"],
+      "required": [
+        "ida",
+        "retorno"
+      ],
       "properties": {
         "ida": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 20,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["origem", "destino", "data_hora"],
+            "required": [
+              "origem",
+              "destino",
+              "data_hora"
+            ],
             "properties": {
-              "origem": { "type": "string", "minLength": 2, "maxLength": 80 },
-              "destino": { "type": "string", "minLength": 2, "maxLength": 80 },
-              "data_hora": { "type": "string", "format": "date-time" }
+              "origem": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "destino": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "data_hora": {
+                "type": "string",
+                "format": "date-time"
+              }
             }
           }
         },
         "retorno": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 20,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["origem", "destino", "data_hora"],
+            "required": [
+              "origem",
+              "destino",
+              "data_hora"
+            ],
             "properties": {
-              "origem": { "type": "string", "minLength": 2, "maxLength": 80 },
-              "destino": { "type": "string", "minLength": 2, "maxLength": 80 },
-              "data_hora": { "type": "string", "format": "date-time" }
+              "origem": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "destino": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "data_hora": {
+                "type": "string",
+                "format": "date-time"
+              }
             }
           }
         }
@@ -136,26 +247,67 @@
     "missao": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["inicio_data_hora", "termino_data_hora"],
+      "required": [
+        "inicio_data_hora",
+        "termino_data_hora"
+      ],
       "properties": {
-        "inicio_data_hora": { "type": "string", "format": "date-time" },
-        "termino_data_hora": { "type": "string", "format": "date-time" }
+        "inicio_data_hora": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "termino_data_hora": {
+          "type": "string",
+          "format": "date-time"
+        }
       }
     },
     "debito_recurso": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tipo"],
+      "required": [
+        "tipo"
+      ],
       "properties": {
-        "tipo": { "type": "string", "enum": ["cchsa", "cavn", "projeto", "outros"] },
-        "detalhe": { "type": "string", "minLength": 2, "maxLength": 200 }
+        "tipo": {
+          "type": "string",
+          "enum": [
+            "cchsa",
+            "cavn",
+            "projeto",
+            "outros"
+          ]
+        },
+        "detalhe": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 200
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "tipo": { "enum": ["projeto", "outros"] } } },
-          "then": { "required": ["detalhe"] },
+          "if": {
+            "properties": {
+              "tipo": {
+                "enum": [
+                  "projeto",
+                  "outros"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "detalhe"
+            ]
+          },
           "else": {
-            "properties": { "detalhe": { "type": "string", "maxLength": 0 } }
+            "properties": {
+              "detalhe": {
+                "type": "string",
+                "maxLength": 0
+              }
+            }
           }
         }
       ]
@@ -163,11 +315,14 @@
     "transporte": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["meios"],
+      "required": [
+        "meios"
+      ],
       "properties": {
         "meios": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 4,
           "uniqueItems": true,
           "items": {
             "type": "string",
@@ -179,7 +334,10 @@
             ]
           }
         },
-        "distancia_km": { "type": "string", "maxLength": 20 },
+        "distancia_km": {
+          "type": "string",
+          "maxLength": 20
+        },
         "termo_veiculo_proprio_ciente": {
           "type": "boolean",
           "description": "No MVP pode ser apenas 'ciente'. Em evolução."
@@ -189,14 +347,21 @@
         {
           "if": {
             "properties": {
-              "meios": { "contains": { "const": "veiculo_proprio" } }
+              "meios": {
+                "contains": {
+                  "const": "veiculo_proprio"
+                }
+              }
             }
           },
-          "then": { "required": ["termo_veiculo_proprio_ciente"] }
+          "then": {
+            "required": [
+              "termo_veiculo_proprio_ciente"
+            ]
+          }
         }
       ]
     },
-
     "flags": {
       "type": "object",
       "additionalProperties": false,
@@ -211,31 +376,63 @@
         }
       }
     },
-
     "justificativas": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "justificativa_fds_feriado_dia_anterior": {
-          "type": "string",
-          "minLength": 10,
-          "maxLength": 2000
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 0
+            },
+            {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 2000
+            }
+          ]
         },
         "justificativa_fora_prazo": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 0
+            },
+            {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 2000
+            }
+          ]
+        },
+        "just_viagem_urgente": {
           "type": "string",
-          "minLength": 10,
           "maxLength": 2000
         },
-        "just_viagem_urgente": { "type": "string", "maxLength": 2000 },
-        "just_fds_feriado": { "type": "string", "maxLength": 2000 },
-        "just_aeroporto": { "type": "string", "maxLength": 2000 },
-        "just_grupo_mais_2": { "type": "string", "maxLength": 2000 },
-        "just_grupo_mais_5": { "type": "string", "maxLength": 2000 },
-        "just_mais_30_diarias": { "type": "string", "maxLength": 2000 }
+        "just_fds_feriado": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "just_aeroporto": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "just_grupo_mais_2": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "just_grupo_mais_5": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "just_mais_30_diarias": {
+          "type": "string",
+          "maxLength": 2000
+        }
       }
     }
   },
-
   "allOf": [
     {
       "description": "Retorno >= Ida (validação de datas - implementar no backend ou com extensão $data no validador)."
@@ -243,21 +440,34 @@
     {
       "description": "Término da missão >= início da missão (validação de datas - backend)."
     },
-
     {
       "if": {
         "properties": {
           "flags": {
-            "properties": { "envolve_fds_feriado_ou_dia_anterior": { "const": true } },
-            "required": ["envolve_fds_feriado_ou_dia_anterior"]
+            "properties": {
+              "envolve_fds_feriado_ou_dia_anterior": {
+                "const": true
+              }
+            },
+            "required": [
+              "envolve_fds_feriado_ou_dia_anterior"
+            ]
           }
         },
-        "required": ["flags"]
+        "required": [
+          "flags"
+        ]
       },
       "then": {
-        "required": ["justificativas"],
+        "required": [
+          "justificativas"
+        ],
         "properties": {
-          "justificativas": { "required": ["justificativa_fds_feriado_dia_anterior"] }
+          "justificativas": {
+            "required": [
+              "justificativa_fds_feriado_dia_anterior"
+            ]
+          }
         }
       }
     },
@@ -265,15 +475,31 @@
       "if": {
         "properties": {
           "flags": {
-            "properties": { "fora_do_prazo": { "const": true } },
-            "required": ["fora_do_prazo"]
+            "properties": {
+              "fora_do_prazo": {
+                "const": true
+              }
+            },
+            "required": [
+              "fora_do_prazo"
+            ]
           }
         },
-        "required": ["flags"]
+        "required": [
+          "flags"
+        ]
       },
       "then": {
-        "required": ["justificativas"],
-        "properties": { "justificativas": { "required": ["justificativa_fora_prazo"] } }
+        "required": [
+          "justificativas"
+        ],
+        "properties": {
+          "justificativas": {
+            "required": [
+              "justificativa_fora_prazo"
+            ]
+          }
+        }
       }
     }
   ]

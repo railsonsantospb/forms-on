@@ -168,7 +168,9 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
                 else:
                     _replace_in_row(row, {"retorno_origem": "", "retorno_destino": "", "retorno_data_hora": ""})
                     if has_data_row:
-                        _replace_in_row(row_data, {"retorno_origem": "", "retorno_destino": "", "retorno_data_hora": ""})
+                        _replace_in_row(
+                            row_data, {"retorno_origem": "", "retorno_destino": "", "retorno_data_hora": ""}
+                        )
                 i += 2 if has_data_row else 1
                 continue
 

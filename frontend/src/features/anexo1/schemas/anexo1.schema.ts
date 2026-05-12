@@ -36,7 +36,7 @@ export const anexo1Schema = z.object({
     }),
     tipo_vinculo: z.enum(['servidor', 'nao_servidor', 'sepe', 'acompanhante_pcd', 'outro'], {
       message: 'Selecione o vínculo',
-    }).optional(),
+    }),
     vinculo_outro_especificar: z.string().optional(),
     passaporte: z.string().max(40, 'Máximo 40 caracteres').optional(),
     lotacao_orgao: z.string().max(120, 'Máximo 120 caracteres').optional(),
