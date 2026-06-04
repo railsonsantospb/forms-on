@@ -175,7 +175,7 @@ export function Anexo1Wizard() {
       },
       debito_recurso: {
         tipo: (data.debito_recurso?.tipo as 'cchsa' | 'cavn' | 'projeto' | 'outros') || 'cchsa',
-        detalhe: data.debito_recurso?.detalhe,
+        detalhe: (['projeto', 'outros'].includes(data.debito_recurso?.tipo || '') ? data.debito_recurso?.detalhe : undefined),
       },
       transporte: {
         meios: (data.transporte?.meios as Anexo1Payload['transporte']['meios']) || [],
@@ -564,7 +564,13 @@ export function Anexo1Wizard() {
             {store.currentStep === 7 && (
               <div className="space-y-4">
                 <FormField label="Débito em recurso" error={stepErrors['debito_recurso.tipo']} required>
-                  <Select value={data.debito_recurso?.tipo || 'cchsa'} onChange={(e) => store.setFieldValue('debito_recurso.tipo', e.target.value)}>
+                  <Select value={data.debito_recurso?.tipo || 'cchsa'} onChange={(e) => {
+                    const newType = e.target.value
+                    store.setFieldValue('debito_recurso.tipo', newType)
+                    if (!['projeto', 'outros'].includes(newType)) {
+                      store.setFieldValue('debito_recurso.detalhe', '')
+                    }
+                  }}>
                     <option value="cchsa">CCHSA</option>
                     <option value="cavn">CAVN</option>
                     <option value="projeto">Projeto</option>
