@@ -34,6 +34,7 @@ export function Anexo1Wizard() {
   const prefill = useAnexo1Prefill()
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward')
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
+  const [hasTriedToAdvance, setHasTriedToAdvance] = useState(false)
   const [trechoModal, setTrechoModal] = useState<{ open: boolean; errors: string[] }>({ open: false, errors: [] })
   const [validationModal, setValidationModal] = useState<{ open: boolean; errors: Array<{ field: string; message: string }> }>({ open: false, errors: [] })
 
@@ -152,7 +153,12 @@ export function Anexo1Wizard() {
     }
   }, [data])
 
-  // Clear errors when user corrects fields
+  // Reset "tried to advance" flag when step changes so new steps start clean
+  useEffect(() => {
+    setHasTriedToAdvance(false)
+  }, [store.currentStep])
+
+  // Clear errors when user corrects fields (only runs when hasTriedToAdvance=true)
   useEffect(() => {
     if (store.currentStep >= 9) return
     const payload = buildPayload()
@@ -191,9 +197,6 @@ export function Anexo1Wizard() {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'issues' in err) {
         const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
-        console.log('VALIDATION DEBUG: Step', step)
-        console.log('VALIDATION DEBUG: Trechos', JSON.stringify(payload.trechos))
-        console.log('VALIDATION DEBUG: Issues', JSON.stringify(issues))
         const currentStepPaths = getStepPaths(step)
         for (const issue of issues) {
           const path = issue.path.join('.')
@@ -201,7 +204,6 @@ export function Anexo1Wizard() {
             currentStepErrors[path] = issue.message
           }
         }
-        console.log('VALIDATION DEBUG: currentStepErrors', JSON.stringify(currentStepErrors))
       } else if (err instanceof Error) {
         console.error('Unexpected error during validation:', err)
         currentStepErrors['_error'] = err.message || 'Erro inesperado na validação'
@@ -212,6 +214,7 @@ export function Anexo1Wizard() {
   }, [buildPayload, store.currentStep])
 
   const goNext = () => {
+    setHasTriedToAdvance(true)
     const { valid, currentErrors } = validateCurrentStep()
     if (valid) {
       setDirection('forward')
@@ -334,7 +337,7 @@ export function Anexo1Wizard() {
             {store.currentStep === 1 && (
               <Step1Tipo
                 data={data}
-                stepErrors={stepErrors}
+                stepErrors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
                 onImport={handleImport}
                 onOpenChat={() => store.setChatOpen(true)}
@@ -345,7 +348,7 @@ export function Anexo1Wizard() {
             {store.currentStep === 2 && (
               <Step2Servidor
                 data={data}
-                stepErrors={stepErrors}
+                stepErrors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
               />
             )}
@@ -358,7 +361,7 @@ export function Anexo1Wizard() {
                 onAdd={() => store.addTrecho(store.currentStep === 3 ? 'ida' : 'retorno')}
                 onRemove={(i) => store.removeTrecho(store.currentStep === 3 ? 'ida' : 'retorno', i)}
                 onUpdate={(i, field, value) => store.updateTrecho(store.currentStep === 3 ? 'ida' : 'retorno', i, field, value)}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
               />
             )}
 
@@ -366,7 +369,7 @@ export function Anexo1Wizard() {
             {store.currentStep === 5 && (
               <Step5Missao
                 data={data}
-                stepErrors={stepErrors}
+                stepErrors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
               />
             )}
@@ -375,7 +378,7 @@ export function Anexo1Wizard() {
             {store.currentStep === 6 && (
               <Step6Motivo
                 data={data}
-                stepErrors={stepErrors}
+                stepErrors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
               />
             )}
@@ -384,7 +387,7 @@ export function Anexo1Wizard() {
             {store.currentStep === 7 && (
               <Step7Recurso
                 data={data}
-                stepErrors={stepErrors}
+                stepErrors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
                 onToggleTransporte={store.toggleTransporte}
               />
@@ -394,7 +397,7 @@ export function Anexo1Wizard() {
             {store.currentStep === 8 && (
               <Step8Justificativas
                 data={data}
-                stepErrors={stepErrors}
+                stepErrors={hasTriedToAdvance ? stepErrors : {}}
                 autoFlags={store.autoFlags}
                 onFieldChange={store.setFieldValue}
               />

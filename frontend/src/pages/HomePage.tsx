@@ -211,11 +211,8 @@ function AnexoCard({
       to={to}
       className="group flex flex-col gap-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-card)] hover:border-[var(--color-accent)]/40 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start">
         <div className="p-2.5 rounded-xl bg-[var(--color-accent)]/10">{icon}</div>
-        <span className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full bg-[var(--color-surface-2)] text-[var(--color-subtle)]">
-          {badge}
-        </span>
       </div>
       <div>
         <h3 className="text-lg font-semibold mb-1 group-hover:text-[var(--color-accent)] transition-colors">
@@ -223,8 +220,11 @@ function AnexoCard({
         </h3>
         <p className="text-sm text-[var(--color-muted)] leading-relaxed">{description}</p>
       </div>
-      <div className="mt-auto pt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)]">
-        Iniciar <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+      <div className="mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent)] group-hover:gap-2.5 transition-all duration-200">
+          Iniciar <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </span>
+        <span className="text-[11px] font-medium text-[var(--color-subtle)] uppercase tracking-wide">{badge}</span>
       </div>
     </Link>
   )

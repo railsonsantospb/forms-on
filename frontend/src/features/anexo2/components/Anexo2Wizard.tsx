@@ -44,6 +44,7 @@ export function Anexo2Wizard() {
   const prefill = useAnexo2Prefill()
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward')
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
+  const [hasTriedToAdvance, setHasTriedToAdvance] = useState(false)
   const [validationModal, setValidationModal] = useState<{ open: boolean; errors: Array<{ field: string; message: string }> }>({ open: false, errors: [] })
 
   const data = store.formData
@@ -107,7 +108,12 @@ export function Anexo2Wizard() {
     }
   }, [data])
 
-  // Clear errors when user corrects fields
+  // Reset "tried to advance" flag when step changes so new steps start clean
+  useEffect(() => {
+    setHasTriedToAdvance(false)
+  }, [store.currentStep])
+
+  // Clear errors when user corrects fields (only relevant after hasTriedToAdvance=true)
   useEffect(() => {
     if (store.currentStep >= 7) return
     const payload = buildPayload()
@@ -223,6 +229,7 @@ export function Anexo2Wizard() {
   }, [])
 
   const goNext = () => {
+    setHasTriedToAdvance(true)
     if (validateCurrentStep()) {
       setDirection('forward')
       store.setStepValidation(store.currentStep, true)
@@ -356,7 +363,7 @@ export function Anexo2Wizard() {
             {store.currentStep === 1 && (
               <Step1Data
                 data={data}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
                 onImport={handleImport}
                 onOpenChat={() => store.setChatOpen(true)}
@@ -367,7 +374,7 @@ export function Anexo2Wizard() {
             {store.currentStep === 2 && (
               <Step2Proposto
                 data={data}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
               />
             )}
@@ -376,7 +383,7 @@ export function Anexo2Wizard() {
             {store.currentStep === 3 && (
               <Step3Afastamento
                 data={data}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
                 onAddTrecho={store.addTrecho}
                 onRemoveTrecho={store.removeTrecho}
                 onUpdateTrecho={store.updateTrecho}
@@ -387,7 +394,7 @@ export function Anexo2Wizard() {
             {store.currentStep === 4 && (
               <Step4Atividades
                 data={data}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
                 onAddAlteracao={store.addAlteracao}
                 onRemoveAlteracao={store.removeAlteracao}
                 onUpdateAlteracao={store.updateAlteracao}
@@ -401,7 +408,7 @@ export function Anexo2Wizard() {
             {store.currentStep === 5 && (
               <Step5Prazo
                 data={data}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
                 autoFlags={store.autoFlags}
                 onFieldChange={store.setFieldValue}
               />
@@ -411,7 +418,7 @@ export function Anexo2Wizard() {
             {store.currentStep === 6 && (
               <Step6Confirmacao
                 data={data}
-                errors={stepErrors}
+                errors={hasTriedToAdvance ? stepErrors : {}}
                 onFieldChange={store.setFieldValue}
               />
             )}

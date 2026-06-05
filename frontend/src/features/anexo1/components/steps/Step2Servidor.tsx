@@ -1,3 +1,4 @@
+import { Landmark, Info } from 'lucide-react'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -56,7 +57,10 @@ export function Step2Servidor({ data, stepErrors, onFieldChange }: Step2Servidor
       {/* Dados bancários */}
       <Card>
         <CardContent className="pt-5">
-          <h4 className="text-sm font-semibold mb-3">Dados bancários</h4>
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--color-border)]">
+            <Landmark size={15} className="text-[var(--color-accent)]" />
+            <h4 className="text-sm font-semibold text-[var(--color-text)]">Dados bancários</h4>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <FormField label="Banco" error={stepErrors['servidor.dados_bancarios.banco']} required>
               <Input value={servidor?.dados_bancarios?.banco || ''} onChange={(e) => onFieldChange('servidor.dados_bancarios.banco', e.target.value)} />
@@ -74,7 +78,10 @@ export function Step2Servidor({ data, stepErrors, onFieldChange }: Step2Servidor
       {/* Informações adicionais */}
       <Card>
         <CardContent className="pt-5">
-          <h4 className="text-sm font-semibold mb-3">Informações adicionais</h4>
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--color-border)]">
+            <Info size={15} className="text-[var(--color-accent)]" />
+            <h4 className="text-sm font-semibold text-[var(--color-text)]">Informações adicionais</h4>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Tipo de vínculo" error={stepErrors['servidor.tipo_vinculo']} required>
               <Select value={servidor?.tipo_vinculo || ''} onChange={(e) => onFieldChange('servidor.tipo_vinculo', e.target.value)}>

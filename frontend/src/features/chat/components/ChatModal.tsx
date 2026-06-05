@@ -191,7 +191,8 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex flex-col justify-end min-h-full space-y-4">
           {engineState.messages.map((msg, index) => (
             <div key={msg.id} className={`flex ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
               <div
@@ -250,6 +251,7 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
           )}
 
           <div ref={messagesEndRef} />
+          </div>
         </div>
 
         {/* Input area */}
