@@ -8,7 +8,6 @@ import {
   Scale, 
   ClipboardList, 
   FileCheck2,
-  AlertCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ReviewSection } from '@/features/review/components/ReviewSection'
@@ -189,7 +188,7 @@ export function Step7Revisao({
                 <tbody className="divide-y divide-[var(--color-border)]/40 text-[var(--color-text)]">
                   {(data.atividades_tabela || []).map((row, i) => (
                     <tr key={i} className="hover:bg-[var(--color-surface-2)]/10 transition-colors">
-                      <td className="py-3 px-4 font-medium whitespace-nowrap">{esc(formatDateBR(row.data))}</td>
+                      <td className="py-3 px-4 font-medium whitespace-nowrap">{esc(formatDateBR(row.data || ''))}</td>
                       <td className="py-3 px-4 whitespace-nowrap">{esc(row.horario)}</td>
                       <td className="py-3 px-4 font-medium">{esc(row.cidade)}</td>
                       <td className="py-3 px-4 text-[var(--color-muted)] leading-relaxed">{esc(row.atividades)}</td>
