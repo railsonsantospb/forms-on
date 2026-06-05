@@ -132,7 +132,7 @@ class TestChatAnexo1Compat:
         """O chat aceita 'João Pessoa' (sem /UF) mas o backend/Zod exige Cidade/UF.
 
         Isso é uma discrepância: o chat valida apenas 'includes(\"/\")' enquanto
-        o schema Zod do frontend exige regex /^.+\/\s*[A-Za-z]{2}$/.
+        o schema Zod do frontend exige regex /^.+\\/\\s*[A-Za-z]{2}$/.
         Para Anexo I o backend schema NÃO exige regex, mas o Zod do frontend sim.
         """
         bad_payload = deepcopy(CHAT_ANEXO1)
@@ -206,7 +206,7 @@ class TestChatAnexo2Compat:
         """Anexo II: chat aceita 'João Pessoa' mas backend schema EXIGE Cidade/UF.
 
         Isso é uma discrepância REAL: o chat valida apenas 'includes(\"/\")'
-        enquanto o backend JSON schema exige regex /^.+\/\s*[A-Za-z]{2}$/.
+        enquanto o backend JSON schema exige regex /^.+\\/\\s*[A-Za-z]{2}$/.
         """
         bad_payload = deepcopy(CHAT_ANEXO2)
         bad_payload["afastamento"]["ida"][0]["origem"] = "João Pessoa"

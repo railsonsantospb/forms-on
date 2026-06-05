@@ -7,10 +7,12 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
+from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
 
+HAS_REACT_BUILD = (Path("frontend/dist") / "index.html").exists()
 
 client = TestClient(app)
 
@@ -104,6 +106,7 @@ class TestHtmlRoutes:
         assert "text/html" in r.headers["content-type"]
         assert len(r.content) > 0
 
+    @pytest.mark.skipif(not HAS_REACT_BUILD, reason="SPA fallback só existe com React build")
     def test_404_page(self):
         r = client.get("/pagina-que-nao-existe")
         assert r.status_code == 200  # SPA fallback
