@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { ChatFlowDefinition, ChatStateDefinition, ChatMessage, ChatEngineState } from '../types'
+import { setPath } from '@/lib/object-utils'
 
 function generateId() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
@@ -13,22 +14,16 @@ function resolveNextState(state: ChatStateDefinition, value: string, data: Recor
   return typeof state.nextState === 'function' ? state.nextState(value, data) : state.nextState
 }
 
-function setPath(obj: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> {
-  const keys = path.split('.')
-  const next = { ...obj }
-  let current: Record<string, unknown> = next
-  for (let i = 0; i < keys.length - 1; i++) {
-    const k = keys[i]
-    current[k] = { ...(current[k] as Record<string, unknown> || {}) }
-    current = current[k] as Record<string, unknown>
-  }
-  current[keys[keys.length - 1]] = value
-  return next
-}
-
-export function useChatEngine(flow: ChatFlowDefinition) {
+export function useChatEngine(
+  flow: ChatFlowDefinition,
+  externalState?: ChatEngineState | null,
+  setExternalState?: (
+    state: ChatEngineState | ((prev: ChatEngineState | null) => ChatEngineState)
+  ) => void,
+) {
   const flowRef = useRef(flow)
-  const [engineState, setEngineState] = useState<ChatEngineState>(() => {
+
+  const [localState, setLocalState] = useState<ChatEngineState>(() => {
     const initialState = flow.states.find((s) => s.id === flow.initialState)
     const initialMessage: ChatMessage = {
       id: generateId(),
@@ -48,6 +43,31 @@ export function useChatEngine(flow: ChatFlowDefinition) {
     }
   })
 
+  // Se houver estado externo (e não for nulo), usa ele. Caso contrário, usa local.
+  const engineState = externalState || localState
+
+  const setEngineState = useCallback(
+    (
+      update: ChatEngineState | ((prev: ChatEngineState) => ChatEngineState)
+    ) => {
+      if (setExternalState) {
+        setExternalState((prev) => {
+          const current = prev || {
+            currentStateId: flowRef.current.initialState,
+            messages: [],
+            data: {},
+            isComplete: false,
+            error: null,
+          }
+          return typeof update === 'function' ? update(current) : update
+        })
+      } else {
+        setLocalState((prev) => (typeof update === 'function' ? update(prev) : update))
+      }
+    },
+    [setExternalState],
+  )
+
   const getStateDef = useCallback(
     (stateId: string): ChatStateDefinition | undefined => {
       return flowRef.current.states.find((s) => s.id === stateId)
@@ -65,7 +85,12 @@ export function useChatEngine(flow: ChatFlowDefinition) {
 
         const value = rawValue.trim()
 
-        // Validação
+        // Validação de allowEmpty
+        if (!stateDef.allowEmpty && value === '') {
+          return { ...prev, error: 'Por favor, preencha este campo.' }
+        }
+
+        // Validação customizada
         if (stateDef.validation) {
           const error = stateDef.validation(value, prev.data)
           if (error) {

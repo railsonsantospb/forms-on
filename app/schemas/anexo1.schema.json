@@ -9,6 +9,7 @@
     "data_solicitacao",
     "servidor",
     "motivo_viagem",
+    "relacao_pertinencia",
     "trechos",
     "missao",
     "debito_recurso",
@@ -163,7 +164,25 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tipo_vinculo": { "const": "outro" }
+            }
+          },
+          "then": {
+            "required": ["vinculo_outro_especificar"],
+            "properties": {
+              "vinculo_outro_especificar": {
+                "type": "string",
+                "minLength": 3
+              }
+            }
+          }
+        }
+      ]
     },
     "motivo_viagem": {
       "type": "string",
@@ -172,6 +191,7 @@
     },
     "relacao_pertinencia": {
       "type": "string",
+      "minLength": 10,
       "maxLength": 2000
     },
     "trechos": {

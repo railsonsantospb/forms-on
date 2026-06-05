@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { Anexo1Payload } from '@/types'
 import { todayISO } from '@/lib/dates'
+import { setPath } from '@/lib/object-utils'
+import type { ChatEngineState } from '@/features/chat/types'
 
 const TOTAL_STEPS = 9
 
@@ -36,6 +38,7 @@ interface Anexo1WizardState {
   stepValidation: Record<number, boolean>
   autoFlags: { foraDoPrazo: boolean; fds: boolean }
   isChatOpen: boolean
+  chatState: ChatEngineState | null
 
   goToStep: (step: number) => void
   nextStep: () => void
@@ -49,21 +52,10 @@ interface Anexo1WizardState {
   setAutoFlags: (flags: { foraDoPrazo: boolean; fds: boolean }) => void
   setStepValidation: (step: number, valid: boolean) => void
   setChatOpen: (open: boolean) => void
+  setChatState: (state: ChatEngineState | ((prev: ChatEngineState | null) => ChatEngineState)) => void
+  resetChatState: () => void
   applyPayload: (payload: Partial<Anexo1Payload>) => void
   reset: () => void
-}
-
-function setPath<T extends Record<string, unknown>>(obj: T, path: string, value: unknown): T {
-  const keys = path.split('.')
-  const next = { ...obj }
-  let current: Record<string, unknown> = next
-  for (let i = 0; i < keys.length - 1; i++) {
-    const k = keys[i]
-    current[k] = { ...(current[k] as Record<string, unknown> || {}) }
-    current = current[k] as Record<string, unknown>
-  }
-  current[keys[keys.length - 1]] = value
-  return next as T
 }
 
 export const useAnexo1WizardStore = create<Anexo1WizardState>((set) => ({
@@ -73,6 +65,7 @@ export const useAnexo1WizardStore = create<Anexo1WizardState>((set) => ({
   stepValidation: {},
   autoFlags: { foraDoPrazo: false, fds: false },
   isChatOpen: false,
+  chatState: null,
 
   goToStep: (step) => set({ currentStep: Math.max(1, Math.min(TOTAL_STEPS, step)) }),
   nextStep: () => set((s) => ({ currentStep: Math.min(TOTAL_STEPS, s.currentStep + 1) })),
@@ -120,12 +113,25 @@ export const useAnexo1WizardStore = create<Anexo1WizardState>((set) => ({
       return { formData: { ...s.formData, transporte: transporte as Anexo1Payload['transporte'] } }
     }),
 
-  setAutoFlags: (flags) => set({ autoFlags: flags }),
+  setAutoFlags: (flags) =>
+    set((s) => {
+      if (s.autoFlags.foraDoPrazo === flags.foraDoPrazo && s.autoFlags.fds === flags.fds) {
+        return {}
+      }
+      return { autoFlags: flags }
+    }),
 
   setStepValidation: (step, valid) =>
     set((s) => ({ stepValidation: { ...s.stepValidation, [step]: valid } })),
 
   setChatOpen: (open) => set({ isChatOpen: open }),
+
+  setChatState: (state) =>
+    set((s) => ({
+      chatState: typeof state === 'function' ? state(s.chatState) : state,
+    })),
+
+  resetChatState: () => set({ chatState: null }),
 
   applyPayload: (payload) =>
     set((s) => ({ formData: { ...s.formData, ...payload } })),
@@ -137,5 +143,6 @@ export const useAnexo1WizardStore = create<Anexo1WizardState>((set) => ({
       stepValidation: {},
       autoFlags: { foraDoPrazo: false, fds: false },
       isChatOpen: false,
+      chatState: null,
     }),
 }))

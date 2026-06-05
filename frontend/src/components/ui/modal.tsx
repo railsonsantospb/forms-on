@@ -2,6 +2,7 @@ import { cn } from '@/lib/cn'
 import { Button } from './button'
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface ModalProps {
   open: boolean
@@ -12,21 +13,108 @@ interface ModalProps {
   icon?: ReactNode
   actions?: ReactNode
   className?: string
+  isAlert?: boolean
 }
 
-export function Modal({ open, onClose, title, description, children, icon, actions, className }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, icon, actions, className, isAlert = false }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const titleId = `modal-title-${Math.random().toString(36).substr(2, 9)}`
+  const descriptionId = `modal-description-${Math.random().toString(36).substr(2, 9)}`
+
+  // Focus trap and return focus
+  useEffect(() => {
+    if (!open) return
+
+    // Store the element that had focus before modal opened
+    previousFocusRef.current = document.activeElement as HTMLElement
+
+    // Focus on modal after render
+    const timer = setTimeout(() => {
+      const modal = modalRef.current
+      if (modal) {
+        const focusableElements = modal.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+        const firstElement = focusableElements[0] as HTMLElement
+        firstElement?.focus()
+      }
+    }, 0)
+
+    // Handle Escape key
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    // Focus trap: keep focus within modal
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return
+
+      const modal = modalRef.current
+      if (!modal) return
+
+      const focusableElements = Array.from(
+        modal.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ) as HTMLElement[]
+
+      if (focusableElements.length === 0) return
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      const activeElement = document.activeElement
+
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (activeElement === firstElement) {
+          e.preventDefault()
+          lastElement.focus()
+        }
+      } else {
+        // Tab
+        if (activeElement === lastElement) {
+          e.preventDefault()
+          firstElement.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('keydown', handleEscape)
+      document.removeEventListener('keydown', handleKeyDown)
+
+      // Return focus to the element that had it before
+      if (previousFocusRef.current && previousFocusRef.current.focus) {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [open, onClose])
+
   if (!open) return null
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 transition-opacity duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 transition-opacity duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
+      role="presentation"
     >
       <div
+        ref={modalRef}
+        role={isAlert ? 'alertdialog' : 'dialog'}
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          'w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-2xl border border-[var(--color-border)] transition-transform duration-200',
+          'w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-2xl border border-[var(--color-border)] focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-200',
           className,
         )}
       >
@@ -34,15 +122,20 @@ export function Modal({ open, onClose, title, description, children, icon, actio
           <div className="flex items-center gap-3">
             {icon && <div className="shrink-0">{icon}</div>}
             <div>
-              <h3 className="text-lg font-semibold">{title}</h3>
+              <h3 id={titleId} className="text-lg font-semibold">
+                {title}
+              </h3>
               {description && (
-                <p className="text-sm text-[var(--color-muted)] mt-0.5">{description}</p>
+                <p id={descriptionId} className="text-sm text-[var(--color-muted)] mt-0.5">
+                  {description}
+                </p>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors p-1 rounded-lg hover:bg-[var(--color-btn-hover)]"
+            className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors p-1 rounded-lg hover:bg-[var(--color-btn-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            aria-label="Fechar modal"
           >
             <X size={18} />
           </button>
@@ -81,9 +174,10 @@ export function ValidationErrorsModal({
       onClose={onClose}
       title={title}
       description={description}
+      isAlert
       icon={
         <div className="w-10 h-10 rounded-full bg-[var(--color-danger)]/10 flex items-center justify-center">
-          <span className="text-[var(--color-danger)] text-lg font-bold">!</span>
+          <span className="text-[var(--color-danger)] text-lg font-bold" aria-hidden="true">!</span>
         </div>
       }
       actions={
@@ -92,13 +186,14 @@ export function ValidationErrorsModal({
         </Button>
       }
     >
-      <ul className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+      <ul className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1" role="list" aria-label="Lista de campos com erros">
         {errors.map((err, i) => (
           <li
             key={i}
             className="flex items-start gap-2.5 text-sm p-2.5 rounded-lg bg-[var(--color-danger)]/5 border border-[var(--color-danger)]/10"
+            role="listitem"
           >
-            <span className="text-[var(--color-danger)] mt-0.5 shrink-0">
+            <span className="text-[var(--color-danger)] mt-0.5 shrink-0" aria-hidden="true">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />

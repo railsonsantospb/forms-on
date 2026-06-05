@@ -24,7 +24,9 @@ createRoot(document.getElementById('root')!).render(
           position="top-right"
           richColors
           closeButton
+          duration={3500}
           toastOptions={{
+            className: 'animate-in fade-in-up duration-200',
             style: {
               background: 'var(--color-surface)',
               color: 'var(--color-text)',

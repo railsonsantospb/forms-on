@@ -49,7 +49,7 @@ CHAT_ANEXO1 = {
         "dados_bancarios": {"banco": "001", "agencia": "0001", "conta": "12345"},
     },
     "motivo_viagem": "Participação em congresso de tecnologia",
-    "relacao_pertinencia": "",
+    "relacao_pertinencia": "Relação de pertinência válida de exemplo com mais de dez caracteres.",
     "trechos": {
         "ida": [{"origem": "João Pessoa/PB", "destino": "Recife/PE", "data_hora": "2026-05-20T08:00"}],
         "retorno": [{"origem": "Recife/PE", "destino": "João Pessoa/PB", "data_hora": "2026-05-22T18:00"}],

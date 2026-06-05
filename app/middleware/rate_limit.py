@@ -1,90 +1,88 @@
-"""Rate limiting para a aplicação."""
+"""Rate limiting com Redis para persistência entre restarts e workers."""
 from __future__ import annotations
 
 import logging
-import time
-from collections import defaultdict
+import os
 from functools import wraps
 from typing import Callable
 
+import redis.asyncio as aioredis
 from fastapi import Request, HTTPException
 
 logger = logging.getLogger("security")
 
 
-class RateLimiter:
-    """Rate limiter simples baseado em memória (IP-based) com auto-limpeza."""
+class RedisRateLimiter:
+    """Rate limiter baseado em Redis com janela deslizante de 1 minuto."""
 
-    MAX_IPS = 10_000  # Limite para evitar memory leak em ataques distribuídos
-    CLEANUP_INTERVAL = 300  # Segundos entre limpezas globais
-
-    def __init__(self, requests_per_minute: int = 60):
+    def __init__(self, requests_per_minute: int = 30):
         self.requests_per_minute = requests_per_minute
-        self.requests: dict[str, list[float]] = defaultdict(list)
-        self._last_cleanup = time.time()
+        self.redis_url = os.getenv(
+            "REDIS_URL",
+            "redis://redis:6379/0",
+        )
+        self._redis: aioredis.Redis | None = None
 
-    def _cleanup_old(self, now: float) -> None:
-        """Remove entradas expiradas e limita número total de IPs."""
-        window_start = now - 60
-        keys_to_remove = []
-        for key, timestamps in self.requests.items():
-            valid = [ts for ts in timestamps if ts > window_start]
-            if valid:
-                self.requests[key] = valid
-            else:
-                keys_to_remove.append(key)
-
-        for key in keys_to_remove:
-            del self.requests[key]
-
-        # Se ainda há muitos IPs, remove os mais antigos (LRU-like)
-        if len(self.requests) > self.MAX_IPS:
-            sorted_keys = sorted(
-                self.requests.keys(),
-                key=lambda k: self.requests[k][-1] if self.requests[k] else 0
+    async def _get_redis(self) -> aioredis.Redis:
+        if self._redis is None:
+            self._redis = aioredis.from_url(
+                self.redis_url,
+                decode_responses=True,
+                socket_connect_timeout=2,
+                socket_timeout=2,
             )
-            for key in sorted_keys[:len(self.requests) - self.MAX_IPS]:
-                del self.requests[key]
+        return self._redis
 
-        self._last_cleanup = now
+    async def is_allowed(self, key: str) -> bool:
+        try:
+            r = await self._get_redis()
+            window = 60
+            now = __import__("time").time()
+            pipe = r.pipeline()
 
-    def is_allowed(self, key: str) -> bool:
-        now = time.time()
-        window_start = now - 60  # janela de 1 minuto
+            # Remove entradas fora da janela
+            await pipe.zremrangebyscore(key, 0, now - window)
+            # Conta requisições atuais
+            await pipe.zcard(key)
+            # Adiciona requisição atual
+            await pipe.zadd(key, {str(now): now})
+            # Expira a chave após 60s (auto-limpeza)
+            await pipe.expire(key, window)
 
-        # Limpa requisições antigas
-        self.requests[key] = [
-            ts for ts in self.requests[key]
-            if ts > window_start
-        ]
+            results = await pipe.execute()
+            count = results[1]  # zcard result
 
-        # Limpeza global periódica para evitar memory leak
-        if now - self._last_cleanup > self.CLEANUP_INTERVAL:
-            self._cleanup_old(now)
+            return count < self.requests_per_minute
+        except Exception as e:
+            logger.error("redis_rate_limit_error: %s", e)
+            # Falha do Redis não bloqueia o usuário (fail open)
+            return True
 
-        if len(self.requests[key]) >= self.requests_per_minute:
-            return False
+    async def get_remaining(self, key: str) -> int:
+        try:
+            r = await self._get_redis()
+            now = __import__("time").time()
+            window = 60
 
-        self.requests[key].append(now)
-        return True
+            await r.zremrangebyscore(key, 0, now - window)
+            count = await r.zcard(key)
+            return max(0, self.requests_per_minute - count)
+        except Exception:
+            return self.requests_per_minute
 
-    def get_remaining(self, key: str) -> int:
-        now = time.time()
-        window_start = now - 60
-        self.requests[key] = [
-            ts for ts in self.requests[key]
-            if ts > window_start
-        ]
-        return max(0, self.requests_per_minute - len(self.requests[key]))
+    async def close(self) -> None:
+        if self._redis:
+            await self._redis.aclose()
+            self._redis = None
 
 
 # Instância global
-limiter = RateLimiter(requests_per_minute=30)
+limiter = RedisRateLimiter(requests_per_minute=30)
 
 
 def rate_limit(requests_per_minute: int = 30):
-    """Decorator para rate limiting em endpoints específicos."""
-    endpoint_limiter = RateLimiter(requests_per_minute=requests_per_minute)
+    """Decorator para rate limiting em endpoints específicos com Redis."""
+    endpoint_limiter = RedisRateLimiter(requests_per_minute=requests_per_minute)
 
     def decorator(func: Callable):
         @wraps(func)
@@ -102,13 +100,11 @@ def rate_limit(requests_per_minute: int = 30):
                         break
 
             if request:
-                # X-Real-IP é setado pelo nginx com o IP real do cliente.
-                # Fallback para request.client.host em desenvolvimento local.
                 client_ip = (
                     request.headers.get("x-real-ip")
                     or (request.client.host if request.client else "unknown")
                 )
-                if not endpoint_limiter.is_allowed(client_ip):
+                if not await endpoint_limiter.is_allowed(client_ip):
                     logger.warning(
                         "rate_limit_exceeded ip=%s endpoint=%s",
                         client_ip,
@@ -116,7 +112,7 @@ def rate_limit(requests_per_minute: int = 30):
                     )
                     raise HTTPException(
                         status_code=429,
-                        detail="Muitas requisições. Tente novamente em alguns segundos."
+                        detail="Muitas requisições. Tente novamente em alguns segundos.",
                     )
 
             return await func(*args, **kwargs)

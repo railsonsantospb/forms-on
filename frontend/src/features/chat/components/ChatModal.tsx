@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { X, Send, Calendar, Clock, Pencil } from 'lucide-react'
 import { useChatEngine } from '../lib/useChatEngine'
-import type { ChatFlowDefinition, ChatStateDefinition } from '../types'
+import type { ChatFlowDefinition, ChatStateDefinition, ChatEngineState } from '../types'
 import { Button } from '@/components/ui/button'
 
 interface ChatModalProps {
@@ -10,6 +10,8 @@ interface ChatModalProps {
   flow: ChatFlowDefinition
   onApply: (data: Record<string, unknown>) => void
   title?: string
+  externalState?: ChatEngineState | null
+  setExternalState?: (state: ChatEngineState | ((prev: ChatEngineState | null) => ChatEngineState)) => void
 }
 
 function getFieldTitle(stateDef: ChatStateDefinition | undefined): string {
@@ -32,8 +34,8 @@ function getPathValue(obj: Record<string, unknown>, path: string): unknown {
   return current
 }
 
-export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente Virtual' }: ChatModalProps) {
-  const { engineState, processReply, reset, updateFieldValue } = useChatEngine(flow)
+export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente Virtual', externalState, setExternalState }: ChatModalProps) {
+  const { engineState, processReply, reset, updateFieldValue } = useChatEngine(flow, externalState, setExternalState)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const errorRef = useRef<HTMLDivElement>(null)
   const prevMessageCount = useRef(0)
@@ -69,8 +71,10 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
 
   useEffect(() => {
     if (isOpen) {
-      reset()
-      prevMessageCount.current = 0
+      if (!externalState) {
+        reset()
+      }
+      prevMessageCount.current = engineState.messages.length
       setTextInput('')
       setDateInput('')
       setDtInput('')
@@ -78,7 +82,7 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
       setEditValue('')
       setEditError(null)
     }
-  }, [isOpen, reset])
+  }, [isOpen, reset, externalState, engineState.messages.length])
 
   if (!isOpen) return null
 
@@ -171,7 +175,7 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
   const editingTitle = getFieldTitle(editingStateDef)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title}>
       <div className="w-full max-w-2xl h-[80vh] flex flex-col bg-[var(--color-background)] border border-[var(--color-border)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">

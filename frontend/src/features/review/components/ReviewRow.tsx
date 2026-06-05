@@ -8,13 +8,20 @@ interface ReviewRowProps {
 }
 
 export function ReviewRow({ label, value, full, fullWidth }: ReviewRowProps) {
+  const isEmpty = value === undefined || value === null || value === '' || value === '—'
+  const displayValue = isEmpty ? (
+    <span className="text-[var(--color-subtle)]/50 italic text-sm font-normal">Não informado</span>
+  ) : (
+    value
+  )
+
   return (
     <div className={full || fullWidth ? 'col-span-full' : ''}>
-      <span className="block text-xs font-medium text-[var(--color-subtle)] uppercase tracking-wide">
+      <span className="block text-xs font-medium text-[var(--color-subtle)] uppercase tracking-wider mb-0.5">
         {label}
       </span>
-      <span className="block text-base font-medium text-[var(--color-text)] break-words">
-        {value || '—'}
+      <span className="block text-base font-semibold text-[var(--color-text)] break-words">
+        {displayValue}
       </span>
     </div>
   )

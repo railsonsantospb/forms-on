@@ -50,6 +50,7 @@ PAYLOAD_ANEXO1 = {
     },
     "debito_recurso": {"tipo": "projeto", "detalhe": "Projeto X"},
     "transporte": {"meios": ["veiculo_oficial"]},
+    "relacao_pertinencia": "Relação de pertinência de exemplo para a missão.",
     "flags": {},
 }
 

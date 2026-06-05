@@ -18,7 +18,6 @@ function makeText(
     question,
     inputMode: 'text',
     fieldPath: opts?.fieldPath,
-    allowEmpty: opts?.allowEmpty,
     validation: (v) => {
       const t = v.trim()
       if (opts?.allowEmpty && t.length === 0) return null

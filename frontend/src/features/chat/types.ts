@@ -14,10 +14,10 @@ export interface ChatStateDefinition {
   validation?: (value: string, data: Record<string, unknown>) => string | null
   nextState: string | ((value: string, data: Record<string, unknown>) => string)
   fieldPath?: string
+  allowEmpty?: boolean
   skipIf?: (data: Record<string, unknown>) => boolean
   autoValue?: string | ((data: Record<string, unknown>) => string)
   formatDisplay?: (value: string) => string
-  allowEmpty?: boolean
   isFinal?: boolean
 }
 

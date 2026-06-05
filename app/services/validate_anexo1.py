@@ -45,6 +45,15 @@ def validate_and_enrich_anexo1(payload: Dict[str, Any]) -> Dict[str, Any]:
     vinculos_validos = {"servidor", "nao_servidor", "sepe", "acompanhante_pcd", "outro"}
     if (servidor.get("tipo_vinculo") or "") not in vinculos_validos:
         errors.append({"field": "servidor.tipo_vinculo", "message": "Selecione o tipo de vínculo."})
+    elif servidor.get("tipo_vinculo") == "outro":
+        especificar = servidor.get("vinculo_outro_especificar") or ""
+        if len(especificar.strip()) < 3:
+            errors.append(
+                {
+                    "field": "servidor.vinculo_outro_especificar",
+                    "message": "Especifique o tipo de vínculo.",
+                }
+            )
 
     tipo = payload.get("tipo_solicitacao")
     if tipo not in ("diarias", "passagens", "diarias_e_passagens"):

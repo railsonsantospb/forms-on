@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Anexo2Payload } from '@/types'
 import { todayISO } from '@/lib/dates'
+import type { ChatEngineState } from '@/features/chat/types'
 
 const TOTAL_STEPS = 7
 
@@ -26,6 +27,7 @@ interface Anexo2WizardState {
   stepValidation: Record<number, boolean>
   autoFlags: { foraDoPrazo: boolean }
   isChatOpen: boolean
+  chatState: ChatEngineState | null
 
   goToStep: (step: number) => void
   nextStep: () => void
@@ -43,22 +45,13 @@ interface Anexo2WizardState {
   setAutoFlags: (flags: { foraDoPrazo: boolean }) => void
   setStepValidation: (step: number, valid: boolean) => void
   setChatOpen: (open: boolean) => void
+  setChatState: (state: ChatEngineState | ((prev: ChatEngineState | null) => ChatEngineState)) => void
+  resetChatState: () => void
   applyPayload: (payload: Partial<Anexo2Payload>) => void
   reset: () => void
 }
 
-function setPath<T extends Record<string, unknown>>(obj: T, path: string, value: unknown): T {
-  const keys = path.split('.')
-  const next = { ...obj }
-  let current: Record<string, unknown> = next
-  for (let i = 0; i < keys.length - 1; i++) {
-    const k = keys[i]
-    current[k] = { ...(current[k] as Record<string, unknown> || {}) }
-    current = current[k] as Record<string, unknown>
-  }
-  current[keys[keys.length - 1]] = value
-  return next as T
-}
+import { setPath } from '@/lib/object-utils'
 
 export const useAnexo2WizardStore = create<Anexo2WizardState>((set) => ({
   currentStep: 1,
@@ -67,6 +60,7 @@ export const useAnexo2WizardStore = create<Anexo2WizardState>((set) => ({
   stepValidation: {},
   autoFlags: { foraDoPrazo: false },
   isChatOpen: false,
+  chatState: null,
 
   goToStep: (step) => set({ currentStep: Math.max(1, Math.min(TOTAL_STEPS, step)) }),
   nextStep: () => set((s) => ({ currentStep: Math.min(TOTAL_STEPS, s.currentStep + 1) })),
@@ -156,6 +150,13 @@ export const useAnexo2WizardStore = create<Anexo2WizardState>((set) => ({
 
   setChatOpen: (open) => set({ isChatOpen: open }),
 
+  setChatState: (state) =>
+    set((s) => ({
+      chatState: typeof state === 'function' ? state(s.chatState) : state,
+    })),
+
+  resetChatState: () => set({ chatState: null }),
+
   applyPayload: (payload) =>
     set((s) => ({ formData: { ...s.formData, ...payload } })),
 
@@ -166,5 +167,6 @@ export const useAnexo2WizardStore = create<Anexo2WizardState>((set) => ({
       stepValidation: {},
       autoFlags: { foraDoPrazo: false },
       isChatOpen: false,
+      chatState: null,
     }),
 }))

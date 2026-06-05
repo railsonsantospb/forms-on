@@ -83,25 +83,26 @@ export function Topbar() {
           {/* Zoom */}
           <button
             onClick={store.decreaseFont}
-            className="p-2 rounded-lg hover:bg-[var(--color-btn-hover)] text-[var(--color-muted)] transition-colors"
+            className="p-2 rounded-lg hover:bg-[var(--color-btn-hover)] text-[var(--color-text)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             title="Diminuir fonte"
-            aria-label="Diminuir fonte"
+            aria-label="Diminuir tamanho da fonte"
           >
-            <ZoomOut size={20} />
+            <ZoomOut size={20} aria-hidden="true" />
           </button>
           <span
-            className="text-[11px] font-semibold text-[var(--color-subtle)] min-w-[36px] text-center select-none"
-            aria-label={`Zoom atual: ${Math.round(store.fontScale * 100)}%`}
+            className="text-[11px] font-semibold text-[var(--color-text)] min-w-[36px] text-center select-none"
+            aria-live="polite"
+            aria-atomic="true"
           >
             {Math.round(store.fontScale * 100)}%
           </span>
           <button
             onClick={store.increaseFont}
-            className="p-2 rounded-lg hover:bg-[var(--color-btn-hover)] text-[var(--color-muted)] transition-colors"
+            className="p-2 rounded-lg hover:bg-[var(--color-btn-hover)] text-[var(--color-text)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             title="Aumentar fonte"
-            aria-label="Aumentar fonte"
+            aria-label="Aumentar tamanho da fonte"
           >
-            <ZoomIn size={20} />
+            <ZoomIn size={20} aria-hidden="true" />
           </button>
 
           {/* Accessibility panel toggle */}
@@ -110,17 +111,17 @@ export function Topbar() {
               ref={buttonRef}
               onClick={() => setPanelOpen((v) => !v)}
               className={[
-                'p-2 rounded-lg transition-colors relative',
+                'p-2 rounded-lg transition-colors relative focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]',
                 panelOpen || anyActive
                   ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
-                  : 'hover:bg-[var(--color-btn-hover)] text-[var(--color-muted)]',
+                  : 'hover:bg-[var(--color-btn-hover)] text-[var(--color-text)]',
               ].join(' ')}
               title="Ferramentas de acessibilidade"
-              aria-label="Ferramentas de acessibilidade"
+              aria-label="Abrir painel de ferramentas de acessibilidade"
               aria-expanded={panelOpen}
               aria-controls="accessibility-panel"
             >
-              <Accessibility size={20} />
+              <Accessibility size={20} aria-hidden="true" />
               {anyActive && (
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--color-accent)]" />
               )}
@@ -143,19 +144,19 @@ export function Topbar() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={store.resetAccessibility}
-                      className="p-1.5 rounded-md hover:bg-[var(--color-btn-hover)] text-[var(--color-subtle)] transition-colors"
+                      className="p-1.5 rounded-md hover:bg-[var(--color-btn-hover)] text-[var(--color-text)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       title="Restaurar padrão"
                       aria-label="Restaurar configurações de acessibilidade"
                     >
-                      <RotateCcw size={14} />
+                      <RotateCcw size={14} aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => setPanelOpen(false)}
-                      className="p-1.5 rounded-md hover:bg-[var(--color-btn-hover)] text-[var(--color-subtle)] transition-colors"
+                      className="p-1.5 rounded-md hover:bg-[var(--color-btn-hover)] text-[var(--color-text)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       title="Fechar"
                       aria-label="Fechar painel de acessibilidade"
                     >
-                      <X size={14} />
+                      <X size={14} aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -238,11 +239,12 @@ export function Topbar() {
           {/* Theme */}
           <button
             onClick={store.toggleTheme}
-            className="p-2 rounded-lg hover:bg-[var(--color-btn-hover)] text-[var(--color-muted)] transition-colors"
+            className="p-2 rounded-lg hover:bg-[var(--color-btn-hover)] text-[var(--color-text)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             title={store.theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
             aria-label={store.theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            aria-pressed={store.theme === 'dark'}
           >
-            {store.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            {store.theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
           </button>
         </div>
       </div>
@@ -335,18 +337,20 @@ function SegmentedControl({
   onChange: (value: string) => void
 }) {
   return (
-    <div className="flex p-0.5 rounded-[var(--radius-md)] bg-[var(--color-btn-bg)] border border-[var(--color-border)]">
+    <div className="flex p-0.5 rounded-[var(--radius-md)] bg-[var(--color-btn-bg)] border border-[var(--color-border)]" role="tablist">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={[
-            'flex-1 px-2 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] transition-colors',
+            'flex-1 px-2 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-inset',
             value === opt.value
               ? 'bg-[var(--color-surface-2)] text-[var(--color-text)]'
-              : 'text-[var(--color-muted)] hover:text-[var(--color-text)]',
+              : 'text-[var(--color-text)] hover:bg-[var(--color-surface-2)]/50',
           ].join(' ')}
-          aria-pressed={value === opt.value}
+          role="tab"
+          aria-selected={value === opt.value}
+          aria-label={`${opt.label}${value === opt.value ? ' (selecionado)' : ''}`}
         >
           {opt.label}
         </button>

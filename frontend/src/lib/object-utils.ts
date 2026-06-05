@@ -46,3 +46,20 @@ export function isEquivalentToDefault(
   }
   return normalize(saved) === normalize(defaultData)
 }
+
+export function setPath<T extends Record<string, unknown>>(
+  obj: T,
+  path: string,
+  value: unknown,
+): T {
+  const keys = path.split('.')
+  const next = { ...obj }
+  let current: Record<string, unknown> = next
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i]
+    current[k] = { ...(current[k] as Record<string, unknown> ?? {}) }
+    current = current[k] as Record<string, unknown>
+  }
+  current[keys[keys.length - 1]] = value
+  return next as T
+}

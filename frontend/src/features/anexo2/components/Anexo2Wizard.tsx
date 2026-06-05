@@ -5,20 +5,7 @@ import { useAnexo2WizardStore, defaultFormData as anexo2DefaultFormData } from '
 import { WizardStepper } from '@/components/wizard/WizardStepper'
 import { WizardNavigation } from '@/components/wizard/WizardNavigation'
 import { StepTransition } from '@/components/wizard/StepTransition'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { FormField } from '@/components/ui/form-field'
-import { DocumentImport } from '@/features/import/components/DocumentImport'
-import { ReviewSection } from '@/features/review/components/ReviewSection'
-import { ReviewGrid } from '@/features/review/components/ReviewGrid'
-import { ReviewRow } from '@/features/review/components/ReviewRow'
-import { ReviewTimeline } from '@/features/review/components/ReviewTimeline'
-import { ReviewBadge } from '@/features/review/components/ReviewBadge'
-import { ReviewAlert } from '@/features/review/components/ReviewAlert'
 import { ChatModal } from '@/features/chat/components/ChatModal'
 import { createAnexo2ChatFlow } from '@/features/anexo2/lib/chatFlow'
 import { applyChatDataToForm } from '@/features/chat/lib/applyChatData'
@@ -26,12 +13,17 @@ import { useAnexo2Preview, useAnexo2Generate, useAnexo2Prefill } from '@/api/ane
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useBeforeUnload } from '@/hooks/useBeforeUnload'
 import { isEquivalentToDefault } from '@/lib/object-utils'
-
-import { formatDateBR, formatDateTimeBR, daysDiff, todayISO } from '@/lib/dates'
-import { maskCPF, maskPhone, onlyDigits } from '@/lib/validators'
+import { daysDiff, todayISO } from '@/lib/dates'
 import { anexo2Schema } from '@/features/anexo2/schemas/anexo2.schema'
 import type { Anexo2Payload } from '@/types'
-import { MessageCircle, FileText, Download, Plus, X, RotateCcw } from 'lucide-react'
+
+import { Step1Data } from './steps/Step1Data'
+import { Step2Proposto } from './steps/Step2Proposto'
+import { Step3Afastamento } from './steps/Step3Afastamento'
+import { Step4Atividades } from './steps/Step4Atividades'
+import { Step5Prazo } from './steps/Step5Prazo'
+import { Step6Confirmacao } from './steps/Step6Confirmacao'
+import { Step7Revisao } from './steps/Step7Revisao'
 
 const TOTAL_STEPS = 7
 
@@ -44,13 +36,6 @@ const STEPS = [
   { number: 6, title: 'Confirmação', subtitle: 'Confirmação de realização da viagem.' },
   { number: 7, title: 'Revisão', subtitle: 'Revise o resumo e gere o documento.' },
 ]
-
-const ORG_LABELS: Record<string, string> = {
-  cchsa: 'CCHSA',
-  cavn: 'CAVN',
-  projetos: 'Projetos',
-  outros: 'Outros',
-}
 
 export function Anexo2Wizard() {
   const store = useAnexo2WizardStore()
@@ -75,7 +60,7 @@ export function Anexo2Wizard() {
           store.applyPayload(saved)
           toast.info('Rascunho anterior restaurado do navegador')
         } else {
-          clear() // Limpa rascunho vazio do sessionStorage
+          clear()
         }
       }
     }
@@ -96,7 +81,7 @@ export function Anexo2Wizard() {
     }
   }, [data, store])
 
-  // Atualiza flags automaticamente quando chega no step de prazo
+  // Update flags automatically when arriving at step 5
   useEffect(() => {
     if (store.currentStep === 5) {
       refreshAutoFlags()
@@ -122,7 +107,7 @@ export function Anexo2Wizard() {
     }
   }, [data])
 
-  // Limpa erros automaticamente quando o usuário corrige os campos
+  // Clear errors when user corrects fields
   useEffect(() => {
     if (store.currentStep >= 7) return
     const payload = buildPayload()
@@ -192,7 +177,6 @@ export function Anexo2Wizard() {
       'alteracoes_cancelamentos_noshow': 'Alterações / Cancelamentos / No Show',
     }
     if (map[path]) return map[path]
-    // trechos dinâmicos
     const trechoMatch = path.match(/^(afastamento\.(ida|retorno)\.(\d+)\.(origem|destino|data_hora))$/)
     if (trechoMatch) {
       const [, , tipo, idx, campo] = trechoMatch
@@ -211,7 +195,6 @@ export function Anexo2Wizard() {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'issues' in err) {
         const issues = (err as { issues: Array<{ path: (string | number)[]; message: string }> }).issues
-        // Mantém o último erro de cada path (mais específico, ex: .refine depois de .length)
         const lastByPath = new Map<string, { path: string; field: string; message: string }>()
         for (const issue of issues) {
           const path = issue.path.join('.')
@@ -255,12 +238,9 @@ export function Anexo2Wizard() {
     store.prevStep()
   }
 
-
-
   const handleGenerate = async (format: 'docx' | 'pdf') => {
     const payload = buildPayload()
 
-    // validação local prévia com schema
     try {
       anexo2Schema.parse(payload)
     } catch (err: unknown) {
@@ -372,255 +352,81 @@ export function Anexo2Wizard() {
       <Card>
         <CardContent className="pt-5">
           <StepTransition step={store.currentStep} direction={direction}>
-            {/* STEP 1 */}
+            {/* STEP 1 — Data */}
             {store.currentStep === 1 && (
-              <div className="space-y-4">
-                <button
-                  onClick={() => store.setChatOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-[var(--radius-md)] bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-2)] text-white font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all z-40"
-                  title="Assistente virtual"
-                >
-                  <MessageCircle size={20} />
-                  <span>Dira — Assistente virtual — Preencher conversando</span>
-                </button>
-                <DocumentImport onImport={handleImport} label="Importar de Anexo I preenchido" />
-                <FormField label="Data do relatório" error={stepErrors['data_relatorio']} required>
-                  <Input type="date" value={data.data_relatorio} onChange={(e) => store.setFieldValue('data_relatorio', e.target.value)} />
-                </FormField>
-              </div>
+              <Step1Data
+                data={data}
+                errors={stepErrors}
+                onFieldChange={store.setFieldValue}
+                onImport={handleImport}
+                onOpenChat={() => store.setChatOpen(true)}
+              />
             )}
 
-            {/* STEP 2 */}
+            {/* STEP 2 — Proposto */}
             {store.currentStep === 2 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField label="Nome completo" error={stepErrors['proposto.nome']} required>
-                    <Input value={data.proposto?.nome || ''} onChange={(e) => store.setFieldValue('proposto.nome', e.target.value)} />
-                  </FormField>
-                  <FormField label="CPF" error={stepErrors['proposto.cpf']} required>
-                    <Input value={maskCPF(data.proposto?.cpf || '')} onChange={(e) => store.setFieldValue('proposto.cpf', onlyDigits(e.target.value))} placeholder="000.000.000-00" />
-                  </FormField>
-                  <FormField label="SIAPE" error={stepErrors['proposto.siape']} required>
-                    <Input value={data.proposto?.siape || ''} onChange={(e) => store.setFieldValue('proposto.siape', onlyDigits(e.target.value))} placeholder="Somente números" />
-                  </FormField>
-                  <FormField label="Cargo/Função" error={stepErrors['proposto.cargo_funcao']} required>
-                    <Input value={data.proposto?.cargo_funcao || ''} onChange={(e) => store.setFieldValue('proposto.cargo_funcao', e.target.value)} />
-                  </FormField>
-                  <FormField label="Telefone" error={stepErrors['proposto.telefone']} required>
-                    <Input value={maskPhone(data.proposto?.telefone || '')} onChange={(e) => store.setFieldValue('proposto.telefone', onlyDigits(e.target.value))} placeholder="(00) 00000-0000" />
-                  </FormField>
-                  <FormField label="E-mail" error={stepErrors['proposto.email']} required>
-                    <Input value={data.proposto?.email || ''} onChange={(e) => store.setFieldValue('proposto.email', e.target.value)} placeholder="email@exemplo.com" />
-                  </FormField>
-                </div>
-                <div className="border-t border-[var(--color-border)] pt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField label="Órgão de exercício" error={stepErrors['proposto.orgao.tipo']} required>
-                      <Select value={data.proposto?.orgao?.tipo || 'cchsa'} onChange={(e) => store.setFieldValue('proposto.orgao.tipo', e.target.value)}>
-                        <option value="cchsa">CCHSA</option>
-                        <option value="cavn">CAVN</option>
-                        <option value="projetos">Projetos</option>
-                        <option value="outros">Outros</option>
-                      </Select>
-                    </FormField>
-                    {(data.proposto?.orgao?.tipo === 'projetos' || data.proposto?.orgao?.tipo === 'outros') && (
-                      <FormField label="Detalhe" error={stepErrors['proposto.orgao.detalhe']} required>
-                        <Input value={data.proposto?.orgao?.detalhe || ''} onChange={(e) => store.setFieldValue('proposto.orgao.detalhe', e.target.value)} />
-                      </FormField>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <Step2Proposto
+                data={data}
+                errors={stepErrors}
+                onFieldChange={store.setFieldValue}
+              />
             )}
 
             {/* STEP 3 — Afastamento */}
             {store.currentStep === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-semibold mb-3">Trechos de ida</h4>
-                  <TrechosList
-                    trechos={data.afastamento?.ida || []}
-                    onAdd={() => store.addTrecho('ida')}
-                    onRemove={(i) => store.removeTrecho('ida', i)}
-                    onUpdate={(i, f, v) => store.updateTrecho('ida', i, f, v)}
-                    errors={stepErrors}
-                    prefix="afastamento.ida"
-                  />
-                </div>
-                <div className="border-t border-[var(--color-border)] pt-4">
-                  <h4 className="text-sm font-semibold mb-3">Trechos de retorno</h4>
-                  <TrechosList
-                    trechos={data.afastamento?.retorno || []}
-                    onAdd={() => store.addTrecho('retorno')}
-                    onRemove={(i) => store.removeTrecho('retorno', i)}
-                    onUpdate={(i, f, v) => store.updateTrecho('retorno', i, f, v)}
-                    errors={stepErrors}
-                    prefix="afastamento.retorno"
-                  />
-                </div>
-              </div>
+              <Step3Afastamento
+                data={data}
+                errors={stepErrors}
+                onAddTrecho={store.addTrecho}
+                onRemoveTrecho={store.removeTrecho}
+                onUpdateTrecho={store.updateTrecho}
+              />
             )}
 
             {/* STEP 4 — Atividades */}
             {store.currentStep === 4 && (
-              <div className="space-y-4">
-                <div className="border-t border-[var(--color-border)] pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold">Alterações / Cancelamentos / No Show</h4>
-                    <Button variant="ghost" size="sm" onClick={() => store.addAlteracao()}>
-                      <Plus size={14} /> Adicionar linha
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--color-border)] text-[var(--color-subtle)] text-xs uppercase">
-                          <th className="text-left py-2 px-2">Tipo</th>
-                          <th className="text-left py-2 px-2">Descrição</th>
-                          <th className="w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data.alteracoes_cancelamentos_noshow || []).map((row, i) => (
-                          <tr key={i} className="border-b border-[var(--color-border)]/50">
-                            <td className="py-1 px-1">
-                              <Select value={row.tipo || ''} onChange={(e) => store.updateAlteracao(i, 'tipo', e.target.value)} className="text-xs py-1.5">
-                                <option value="">Selecione</option>
-                                <option value="Alteração">Alteração</option>
-                                <option value="Cancelamento">Cancelamento</option>
-                                <option value="No Show">No Show</option>
-                                <option value="Outro">Outro</option>
-                              </Select>
-                            </td>
-                            <td className="py-1 px-1"><Input value={row.descricao || ''} onChange={(e) => store.updateAlteracao(i, 'descricao', e.target.value)} className="text-xs py-1.5" /></td>
-                            <td className="py-1 px-1">
-                              <button onClick={() => store.removeAlteracao(i)} className="text-[var(--color-danger)] hover:opacity-80"><X size={14} /></button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {(data.alteracoes_cancelamentos_noshow || []).length === 0 && (
-                    <p className="text-xs text-[var(--color-danger)] mt-1">Nenhuma alteração registrada.</p>
-                  )}
-                </div>
-
-                <div className="border-t border-[var(--color-border)] pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold">Tabela de atividades</h4>
-                    <Button variant="ghost" size="sm" onClick={() => store.addAtividade()}>
-                      <Plus size={14} /> Adicionar linha
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--color-border)] text-[var(--color-subtle)] text-xs uppercase">
-                          <th className="text-left py-2 px-2">Data</th>
-                          <th className="text-left py-2 px-2">Horário</th>
-                          <th className="text-left py-2 px-2">Cidade</th>
-                          <th className="text-left py-2 px-2">Atividades *</th>
-                          <th className="w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data.atividades_tabela || []).map((row, i) => (
-                          <tr key={i} className="border-b border-[var(--color-border)]/50">
-                            <td className="py-1 px-1"><Input value={row.data || ''} onChange={(e) => store.updateAtividade(i, 'data', e.target.value)} className="text-xs py-1.5" /></td>
-                            <td className="py-1 px-1"><Input value={row.horario || ''} onChange={(e) => store.updateAtividade(i, 'horario', e.target.value)} className="text-xs py-1.5" /></td>
-                            <td className="py-1 px-1"><Input value={row.cidade || ''} onChange={(e) => store.updateAtividade(i, 'cidade', e.target.value)} className="text-xs py-1.5" /></td>
-                            <td className="py-1 px-1"><Input value={row.atividades || ''} onChange={(e) => store.updateAtividade(i, 'atividades', e.target.value)} className="text-xs py-1.5" placeholder="Obrigatório" /></td>
-                            <td className="py-1 px-1">
-                              <button onClick={() => store.removeAtividade(i)} className="text-[var(--color-danger)] hover:opacity-80"><X size={14} /></button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {stepErrors['atividades_tabela'] && (
-                    <p className="text-xs text-[var(--color-danger)] mt-1">{stepErrors['atividades_tabela']}</p>
-                  )}
-                </div>
-              </div>
+              <Step4Atividades
+                data={data}
+                errors={stepErrors}
+                onAddAlteracao={store.addAlteracao}
+                onRemoveAlteracao={store.removeAlteracao}
+                onUpdateAlteracao={store.updateAlteracao}
+                onAddAtividade={store.addAtividade}
+                onRemoveAtividade={store.removeAtividade}
+                onUpdateAtividade={store.updateAtividade}
+              />
             )}
 
             {/* STEP 5 — Prazo */}
             {store.currentStep === 5 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface-2)]">
-                  <Badge variant={store.autoFlags.foraDoPrazo ? 'danger' : 'success'}>
-                    {store.autoFlags.foraDoPrazo ? 'Fora do prazo' : 'Dentro do prazo'}
-                  </Badge>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer opacity-70">
-                    <input type="checkbox" checked={data.flags?.prestacao_contas_fora_prazo || false} disabled className="w-4 h-4" />
-                    <span className="text-sm">Prestação de contas fora do prazo (calculado automaticamente)</span>
-                  </label>
-                  {data.flags?.prestacao_contas_fora_prazo && (
-                    <div className="mt-2">
-                      <FormField label="Justificativa" error={stepErrors['justificativa_prestacao_contas_fora_prazo']} required>
-                        <Textarea value={data.justificativa_prestacao_contas_fora_prazo || ''} onChange={(e) => store.setFieldValue('justificativa_prestacao_contas_fora_prazo', e.target.value)} />
-                      </FormField>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <Step5Prazo
+                data={data}
+                errors={stepErrors}
+                autoFlags={store.autoFlags}
+                onFieldChange={store.setFieldValue}
+              />
             )}
 
             {/* STEP 6 — Confirmação */}
             {store.currentStep === 6 && (
-              <div className="space-y-4">
-                <FormField label="A viagem foi realizada?" error={stepErrors['viagem_realizada']} required>
-                  <Select value={data.viagem_realizada || 'sim'} onChange={(e) => store.setFieldValue('viagem_realizada', e.target.value)}>
-                    <option value="sim">Sim</option>
-                    <option value="nao">Não</option>
-                  </Select>
-                </FormField>
-                {data.viagem_realizada === 'nao' && (
-                  <ReviewAlert variant="danger">
-                    <strong>Atenção:</strong> A viagem não foi realizada. No campo "Atividades desenvolvidas" (passo anterior), descreva o motivo da não realização.
-                  </ReviewAlert>
-                )}
-              </div>
+              <Step6Confirmacao
+                data={data}
+                errors={stepErrors}
+                onFieldChange={store.setFieldValue}
+              />
             )}
 
-            {/* STEP 7 — Review */}
+            {/* STEP 7 — Revisão */}
             {store.currentStep === 7 && (
-              <div>
-                {renderReview(data, store.autoFlags)}
-
-                <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-[var(--color-border)]">
-                  <Button variant="primary" onClick={() => handleGenerate('docx')} isLoading={generate.isPending}>
-                    <FileText size={16} /> Gerar DOCX
-                  </Button>
-                  <Button variant="secondary" onClick={() => handleGenerate('pdf')} isLoading={generate.isPending}>
-                    <Download size={16} /> Gerar PDF
-                  </Button>
-                  <Button variant="ghost" onClick={handleReset}>
-                    <RotateCcw size={16} /> Novo formulário
-                  </Button>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-                  <p className="text-sm text-[var(--color-muted)] mb-3">Precisa corrigir alguma informação?</p>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5, 6].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => { setDirection('backward'); store.goToStep(s) }}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-btn-bg)] hover:bg-[var(--color-btn-hover)] text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-                      >
-                        {STEPS[s - 1].title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <Step7Revisao
+                data={data}
+                autoFlags={store.autoFlags}
+                isPending={generate.isPending}
+                onGenerate={handleGenerate}
+                onReset={handleReset}
+                onGoToStep={store.goToStep}
+                setDirection={setDirection}
+              />
             )}
           </StepTransition>
 
@@ -656,13 +462,12 @@ export function Anexo2Wizard() {
         })}
         onApply={() => store.setChatOpen(false)}
         title="Dira — Assistente Anexo II"
+        externalState={store.chatState}
+        setExternalState={store.setChatState}
       />
-
     </div>
   )
 }
-
-/* ===== Helpers ===== */
 
 function getStepPaths(step: number): string[] {
   const paths: Record<number, string[]> = {
@@ -674,162 +479,4 @@ function getStepPaths(step: number): string[] {
     6: ['viagem_realizada'],
   }
   return paths[step] || []
-}
-
-/* ===== Sub-components ===== */
-
-function TrechosList({ trechos, onAdd, onRemove, onUpdate, errors, prefix }: {
-  trechos: { origem: string; destino: string; data_hora: string }[]
-  onAdd: () => void
-  onRemove: (i: number) => void
-  onUpdate: (i: number, field: string, value: string) => void
-  errors: Record<string, string>
-  prefix: string
-}) {
-  return (
-    <div className="space-y-3">
-      {trechos.map((t, i) => (
-        <div key={i} className="p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)]/30 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Trecho {i + 1}</span>
-            {trechos.length > 1 && (
-              <button onClick={() => onRemove(i)} className="text-[var(--color-danger)] hover:opacity-80"><X size={14} /></button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <FormField label="Origem (Cidade/UF) *" error={errors[`${prefix}.${i}.origem`]}>
-              <Input value={t.origem} onChange={(e) => onUpdate(i, 'origem', e.target.value)} placeholder="João Pessoa/PB" />
-            </FormField>
-            <FormField label="Destino (Cidade/UF) *" error={errors[`${prefix}.${i}.destino`]}>
-              <Input value={t.destino} onChange={(e) => onUpdate(i, 'destino', e.target.value)} placeholder="Recife/PE" />
-            </FormField>
-            <div className="col-span-full">
-              <FormField label="Data e hora" error={errors[`${prefix}.${i}.data_hora`]}>
-                <Input type="datetime-local" value={t.data_hora?.slice(0, 16) || ''} onChange={(e) => onUpdate(i, 'data_hora', e.target.value ? e.target.value + ':00' : '')} />
-              </FormField>
-            </div>
-          </div>
-        </div>
-      ))}
-      <Button variant="ghost" size="sm" onClick={onAdd}><Plus size={14} /> Adicionar trecho</Button>
-    </div>
-  )
-}
-
-function renderReview(data: Partial<Anexo2Payload>, autoFlags: { foraDoPrazo: boolean }) {
-  const esc = (s: string | undefined) => s || '—'
-
-  return (
-    <div className="space-y-1.5">
-      <ReviewSection title="Relatório de Viagem">
-        <ReviewGrid columns={3}>
-          <ReviewRow label="Data" value={formatDateBR(data.data_relatorio || '')} />
-          <ReviewRow label="Viagem realizada" value={data.viagem_realizada === 'sim' ? 'Sim' : 'Não'} />
-          <ReviewRow label="Status" value={
-            <ReviewBadge variant={autoFlags.foraDoPrazo ? 'danger' : 'success'} label={autoFlags.foraDoPrazo ? 'Fora do prazo' : 'Dentro do prazo'} />
-          } />
-        </ReviewGrid>
-      </ReviewSection>
-
-      <ReviewSection title="Proposto">
-        <ReviewGrid>
-          <ReviewRow label="Nome" value={data.proposto?.nome} />
-          <ReviewRow label="Cargo" value={data.proposto?.cargo_funcao} />
-          <ReviewRow label="CPF" value={maskCPF(data.proposto?.cpf || '')} />
-          <ReviewRow label="SIAPE" value={data.proposto?.siape} />
-          <ReviewRow label="Telefone" value={maskPhone(data.proposto?.telefone || '')} />
-          <ReviewRow label="E-mail" value={data.proposto?.email} />
-          <ReviewRow label="Órgão" value={ORG_LABELS[data.proposto?.orgao?.tipo || '']} fullWidth />
-          <ReviewRow label="Órgão (detalhe)" value={data.proposto?.orgao?.detalhe} fullWidth />
-        </ReviewGrid>
-      </ReviewSection>
-
-      <ReviewSection title="Afastamento">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <span className="text-xs font-medium text-[var(--color-subtle)] uppercase tracking-wide mb-1 block">Ida</span>
-            <ReviewTimeline items={(data.afastamento?.ida || []).map(t => ({
-              content: `De ${esc(t.origem)} a ${esc(t.destino)}`,
-              meta: formatDateTimeBR(t.data_hora),
-            }))} />
-          </div>
-          <div>
-            <span className="text-xs font-medium text-[var(--color-subtle)] uppercase tracking-wide mb-1 block">Retorno</span>
-            <ReviewTimeline items={(data.afastamento?.retorno || []).map(t => ({
-              content: `De ${esc(t.origem)} a ${esc(t.destino)}`,
-              meta: formatDateTimeBR(t.data_hora),
-            }))} />
-          </div>
-        </div>
-      </ReviewSection>
-
-      <ReviewSection title="Atividades">
-        <div className="mt-2 pt-2 border-t border-[var(--color-border)] overflow-x-auto">
-          <p className="text-xs font-medium text-[var(--color-subtle)] uppercase tracking-wide mb-2">Alterações / Cancelamentos / No Show</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] text-[var(--color-subtle)]">
-                <th className="text-left py-2 px-2">Tipo</th>
-                <th className="text-left py-2 px-2">Descrição</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.alteracoes_cancelamentos_noshow || []).map((row, i) => (
-                <tr key={i} className="border-b border-[var(--color-border)]/50">
-                  <td className="py-2 px-2">{row.tipo || '—'}</td>
-                  <td className="py-2 px-2">{row.descricao || '—'}</td>
-                </tr>
-              ))}
-              {(data.alteracoes_cancelamentos_noshow || []).length === 0 && (
-                <tr>
-                  <td className="py-2 px-2 text-[var(--color-subtle)]" colSpan={2}>Nenhuma alteração registrada</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-2 pt-2 border-t border-[var(--color-border)] overflow-x-auto">
-          <h4 className="text-sm font-semibold mb-2">DESCRIÇÃO DA VIAGEM:</h4>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] text-[var(--color-subtle)]">
-                <th className="text-left py-2 px-2">Data</th>
-                <th className="text-left py-2 px-2">Horário</th>
-                <th className="text-left py-2 px-2">Cidade</th>
-                <th className="text-left py-2 px-2">Atividades</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.atividades_tabela || []).map((row, i) => (
-                <tr key={i} className="border-b border-[var(--color-border)]/50">
-                  <td className="py-2 px-2">{row.data || '—'}</td>
-                  <td className="py-2 px-2">{row.horario || '—'}</td>
-                  <td className="py-2 px-2">{row.cidade || '—'}</td>
-                  <td className="py-2 px-2">{row.atividades || '—'}</td>
-                </tr>
-              ))}
-              {(data.atividades_tabela || []).length === 0 && (
-                <tr>
-                  <td className="py-2 px-2 text-[var(--color-subtle)]" colSpan={4}>Nenhuma atividade na tabela</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </ReviewSection>
-
-      <ReviewSection title="Prazo">
-        <ReviewGrid columns={2}>
-          <ReviewRow label="Prestação fora do prazo" value={data.flags?.prestacao_contas_fora_prazo ? 'Sim' : 'Não'} />
-          <ReviewRow label="Justificativa" value={data.justificativa_prestacao_contas_fora_prazo} fullWidth />
-        </ReviewGrid>
-      </ReviewSection>
-
-      {data.viagem_realizada === 'nao' && (
-        <ReviewAlert variant="danger">
-          <strong>Atenção:</strong> Viagem não realizada. Verifique se o motivo foi devidamente descrito nas atividades.
-        </ReviewAlert>
-      )}
-    </div>
-  )
 }

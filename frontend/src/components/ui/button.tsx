@@ -17,7 +17,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const variants = {
-    primary: 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]/90',
+    primary: 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]/90 hover:scale-105 active:scale-95 hover:shadow-lg',
     secondary: 'bg-[var(--color-btn-bg)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-btn-hover)]',
     ghost: 'bg-transparent text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-btn-hover)]',
     danger: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-[var(--color-danger)]/30 hover:bg-[var(--color-danger)]/20',
@@ -32,7 +32,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed',
         variants[variant],
         sizes[size],
         className,

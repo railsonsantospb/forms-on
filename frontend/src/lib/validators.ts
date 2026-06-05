@@ -69,3 +69,15 @@ export function maskPhone(value: string): string {
   if (v.length <= 10) return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`
   return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`
 }
+
+export function maskAgencia(value: string): string {
+  return onlyDigits(value).slice(0, 6)
+}
+
+export function maskConta(value: string): string {
+  const digits = onlyDigits(value).slice(0, 12)
+  if (digits.length > 1) {
+    return digits.slice(0, -1) + '-' + digits.slice(-1)
+  }
+  return digits
+}

@@ -23,7 +23,14 @@ export const anexo1Schema = z.object({
     cargo_funcao: z.string().min(2, 'Informe o cargo/função').max(80, 'Máximo 80 caracteres'),
     cpf: z.string().length(11, 'CPF deve ter 11 dígitos').refine(isCPF, 'CPF inválido'),
     rg: z.string().min(3, 'Informe o RG').max(20, 'Máximo 20 caracteres'),
-    data_nascimento: z.string().min(1, 'Informe a data de nascimento'),
+    data_nascimento: z.string()
+      .min(1, 'Informe a data de nascimento')
+      .refine((val) => {
+        const d = new Date(val)
+        const now = new Date()
+        const minDate = new Date('1920-01-01')
+        return !isNaN(d.getTime()) && d < now && d > minDate
+      }, 'Data de nascimento inválida'),
     siape: z.string().regex(/^\d{4,15}$/, 'SIAPE deve ter 4 a 15 dígitos'),
     nome_mae: z.string().min(3, 'Informe o nome da mãe').max(120, 'Máximo 120 caracteres'),
     endereco: z.string().min(5, 'Informe o endereço completo').max(200, 'Máximo 200 caracteres'),
@@ -50,10 +57,105 @@ export const anexo1Schema = z.object({
     }).optional(),
   }),
   motivo_viagem: z.string().min(20, 'Mínimo 20 caracteres').max(2000, 'Máximo 2000 caracteres'),
-  relacao_pertinencia: z.string().max(2000, 'Máximo 2000 caracteres').optional(),
+  relacao_pertinencia: z.string()
+    .min(10, 'Mínimo 10 caracteres')
+    .max(2000, 'Máximo 2000 caracteres'),
   trechos: z.object({
     ida: z.array(trechoSchema).min(1, 'Adicione pelo menos um trecho de ida'),
     retorno: z.array(trechoSchema).min(1, 'Adicione pelo menos um trecho de retorno'),
+  }).superRefine((data, ctx) => {
+    // Validação de sequência dos trechos de ida
+    for (let i = 1; i < data.ida.length; i++) {
+      const prev = new Date(data.ida[i - 1].data_hora)
+      const curr = new Date(data.ida[i].data_hora)
+      if (curr < prev) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Trecho ${i + 1} de ida não pode ser anterior ao trecho ${i}`,
+          path: ['ida', i, 'data_hora'],
+        })
+      }
+    }
+
+    // Validação de sequência dos trechos de retorno
+    for (let i = 1; i < data.retorno.length; i++) {
+      const prev = new Date(data.retorno[i - 1].data_hora)
+      const curr = new Date(data.retorno[i].data_hora)
+      if (curr < prev) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Trecho ${i + 1} de retorno não pode ser anterior ao trecho ${i}`,
+          path: ['retorno', i, 'data_hora'],
+        })
+      }
+    }
+
+    // Retorno >= último trecho de ida
+    if (data.ida.length && data.retorno.length) {
+      const lastIda = new Date(data.ida[data.ida.length - 1].data_hora)
+      const firstRet = new Date(data.retorno[0].data_hora)
+      if (firstRet < lastIda) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Primeiro trecho de retorno não pode ser anterior ao último trecho de ida',
+          path: ['retorno', 0, 'data_hora'],
+        })
+      }
+    }
+
+    // === REGRAS DE CIDADE ===
+    data.ida.forEach((t, i) => {
+      if (t.origem && t.destino && t.origem.trim().toLowerCase() === t.destino.trim().toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A origem e o destino não podem ser a mesma cidade',
+          path: ['ida', i, 'destino'],
+        })
+      }
+    })
+    data.retorno.forEach((t, i) => {
+      if (t.origem && t.destino && t.origem.trim().toLowerCase() === t.destino.trim().toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A origem e o destino não podem ser a mesma cidade',
+          path: ['retorno', i, 'destino'],
+        })
+      }
+    })
+
+    for (let i = 0; i < data.ida.length - 1; i++) {
+      if (data.ida[i].destino && data.ida[i + 1].origem &&
+          data.ida[i].destino.trim().toLowerCase() !== data.ida[i + 1].origem.trim().toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `O destino do trecho ${i + 1} deve ser a origem do trecho ${i + 2}`,
+          path: ['ida', i + 1, 'origem'],
+        })
+      }
+    }
+    for (let i = 0; i < data.retorno.length - 1; i++) {
+      if (data.retorno[i].destino && data.retorno[i + 1].origem &&
+          data.retorno[i].destino.trim().toLowerCase() !== data.retorno[i + 1].origem.trim().toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `O destino do trecho ${i + 1} deve ser a origem do trecho ${i + 2}`,
+          path: ['retorno', i + 1, 'origem'],
+        })
+      }
+    }
+
+    if (data.ida.length && data.retorno.length) {
+      const ultimoDestinoIda = data.ida[data.ida.length - 1].destino
+      const primeiraOrigemRet = data.retorno[0].origem
+      if (ultimoDestinoIda && primeiraOrigemRet &&
+          ultimoDestinoIda.trim().toLowerCase() !== primeiraOrigemRet.trim().toLowerCase()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'O destino da ida deve ser o mesmo que a origem do retorno',
+          path: ['retorno', 0, 'origem'],
+        })
+      }
+    }
   }),
   missao: z.object({
     inicio_data_hora: z.string().min(1, 'Informe o início'),
@@ -87,45 +189,6 @@ export const anexo1Schema = z.object({
     just_mais_30_diarias: z.string().optional(),
   }).optional(),
 }).superRefine((data, ctx) => {
-  // Validação de sequência dos trechos de ida
-  for (let i = 1; i < data.trechos.ida.length; i++) {
-    const prev = new Date(data.trechos.ida[i - 1].data_hora)
-    const curr = new Date(data.trechos.ida[i].data_hora)
-    if (curr < prev) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Trecho ${i + 1} de ida não pode ser anterior ao trecho ${i}`,
-        path: ['trechos', 'ida', i, 'data_hora'],
-      })
-    }
-  }
-
-  // Validação de sequência dos trechos de retorno
-  for (let i = 1; i < data.trechos.retorno.length; i++) {
-    const prev = new Date(data.trechos.retorno[i - 1].data_hora)
-    const curr = new Date(data.trechos.retorno[i].data_hora)
-    if (curr < prev) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Trecho ${i + 1} de retorno não pode ser anterior ao trecho ${i}`,
-        path: ['trechos', 'retorno', i, 'data_hora'],
-      })
-    }
-  }
-
-  // Retorno >= último trecho de ida
-  if (data.trechos.ida.length && data.trechos.retorno.length) {
-    const lastIda = new Date(data.trechos.ida[data.trechos.ida.length - 1].data_hora)
-    const firstRet = new Date(data.trechos.retorno[0].data_hora)
-    if (firstRet < lastIda) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Primeiro trecho de retorno não pode ser anterior ao último trecho de ida',
-        path: ['trechos', 'retorno', 0, 'data_hora'],
-      })
-    }
-  }
-
   // Missão: termino >= inicio
   if (data.missao.inicio_data_hora && data.missao.termino_data_hora) {
     const inicio = new Date(data.missao.inicio_data_hora)
@@ -188,6 +251,26 @@ export const anexo1Schema = z.object({
     })
   }
 
+  // Servidor: lotação/órgão obrigatório
+  if (data.servidor.tipo_vinculo === 'servidor' && (!data.servidor.lotacao_orgao || data.servidor.lotacao_orgao.trim().length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Informe a lotação/órgão',
+      path: ['servidor', 'lotacao_orgao'],
+    })
+  }
+
+  // Vínculo "outro" precisa de especificação
+  if (data.servidor.tipo_vinculo === 'outro' &&
+      (!data.servidor.vinculo_outro_especificar ||
+       data.servidor.vinculo_outro_especificar.trim().length < 3)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Especifique o tipo de vínculo',
+      path: ['servidor', 'vinculo_outro_especificar'],
+    })
+  }
+
   // Veículo próprio: termo obrigatório
   if (data.transporte.meios.includes('veiculo_proprio') && !data.transporte.termo_veiculo_proprio_ciente) {
     ctx.addIssue({
@@ -217,63 +300,6 @@ export const anexo1Schema = z.object({
       message: 'Justificativa deve ter no mínimo 10 caracteres',
       path: ['justificativas', 'justificativa_fora_prazo'],
     })
-  }
-
-  // === REGRAS DE CIDADE ===
-  const ida = data.trechos.ida
-  const ret = data.trechos.retorno
-
-  ida.forEach((t, i) => {
-    if (t.origem && t.destino && t.origem.trim().toLowerCase() === t.destino.trim().toLowerCase()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'A origem e o destino não podem ser a mesma cidade',
-        path: ['trechos', 'ida', i, 'destino'],
-      })
-    }
-  })
-  ret.forEach((t, i) => {
-    if (t.origem && t.destino && t.origem.trim().toLowerCase() === t.destino.trim().toLowerCase()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'A origem e o destino não podem ser a mesma cidade',
-        path: ['trechos', 'retorno', i, 'destino'],
-      })
-    }
-  })
-
-  for (let i = 0; i < ida.length - 1; i++) {
-    if (ida[i].destino && ida[i + 1].origem &&
-        ida[i].destino.trim().toLowerCase() !== ida[i + 1].origem.trim().toLowerCase()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `O destino do trecho ${i + 1} deve ser a origem do trecho ${i + 2}`,
-        path: ['trechos', 'ida', i + 1, 'origem'],
-      })
-    }
-  }
-  for (let i = 0; i < ret.length - 1; i++) {
-    if (ret[i].destino && ret[i + 1].origem &&
-        ret[i].destino.trim().toLowerCase() !== ret[i + 1].origem.trim().toLowerCase()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `O destino do trecho ${i + 1} deve ser a origem do trecho ${i + 2}`,
-        path: ['trechos', 'retorno', i + 1, 'origem'],
-      })
-    }
-  }
-
-  if (ida.length && ret.length) {
-    const ultimoDestinoIda = ida[ida.length - 1].destino
-    const primeiraOrigemRet = ret[0].origem
-    if (ultimoDestinoIda && primeiraOrigemRet &&
-        ultimoDestinoIda.trim().toLowerCase() !== primeiraOrigemRet.trim().toLowerCase()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'O destino da ida deve ser o mesmo que a origem do retorno',
-        path: ['trechos', 'retorno', 0, 'origem'],
-      })
-    }
   }
 
   // Justificativas adicionais: se preenchida, mínimo 10 caracteres

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from pathlib import Path
 
@@ -38,3 +39,7 @@ def convert_docx_to_pdf(docx_path: Path) -> Path:
     if not pdf_path.exists():
         raise RuntimeError("Falha ao converter DOCX para PDF.")
     return pdf_path
+
+
+async def convert_docx_to_pdf_async(docx_path: Path) -> Path:
+    return await asyncio.to_thread(convert_docx_to_pdf, docx_path)

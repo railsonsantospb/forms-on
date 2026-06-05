@@ -17,7 +17,7 @@ export function HomePage() {
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <section className="py-10">
+      <section className="py-10 animate-in fade-in duration-300">
         <div className="flex flex-col items-center text-center gap-5">
           <img
             src="/brasao.png"
@@ -25,8 +25,8 @@ export function HomePage() {
             className="w-24 h-24 sm:w-28 sm:h-28 object-contain"
           />
 
-          <div className="max-w-xl">
-            <h1 className="text-xl sm:text-2xl font-bold mb-2 leading-snug">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-bold mb-3 leading-tight">
               Preenchimento inteligente de formulários de diárias
             </h1>
             <p className="text-[var(--color-muted)] text-sm sm:text-base leading-relaxed">
@@ -39,7 +39,7 @@ export function HomePage() {
       </section>
 
       {/* Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
         <AnexoCard
           to="/anexo1"
           icon={<FileText size={28} className="text-[var(--color-accent)]" />}
@@ -57,7 +57,7 @@ export function HomePage() {
       </section>
 
       {/* Como funciona */}
-      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
+      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8 animate-in fade-in duration-300">
         <h2 className="text-lg font-semibold mb-6 text-center">Como funciona</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-[var(--color-muted)]">
           <Step number={1} text="Preencha o formulário passo a passo com validação automática" />
@@ -67,44 +67,50 @@ export function HomePage() {
       </section>
 
       {/* Informações importantes */}
-      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
+      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8 animate-in fade-in duration-300">
         <h2 className="text-lg font-semibold mb-6 text-center">Informações importantes</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <InfoCard
             icon={<Clock size={20} className="text-[var(--color-accent)]" />}
             title="Prazos"
             text="A solicitação de diárias deve ser enviada com antecedência mínima de 10 dias antes do início da viagem."
+            delay="100ms"
           />
           <InfoCard
             icon={<AlertTriangle size={20} className="text-[var(--color-warning)]" />}
             title="Requisitos obrigatórios"
             text="É necessário informar a missão oficial, motivo detalhado, trechos de ida e volta, e dados bancários atualizados."
+            delay="200ms"
           />
           <InfoCard
             icon={<CheckCircle2 size={20} className="text-[var(--color-success)]" />}
             title="Validação automática"
             text="O sistema verifica campos obrigatórios, formatos de data, valores e alerta sobre inconsistências em tempo real."
+            delay="300ms"
           />
           <InfoCard
             icon={<FileCheck size={20} className="text-[var(--color-accent)]" />}
             title="Documentos gerados"
             text="Os documentos seguem o padrão oficial da UFPB e estão prontos para assinatura digital ou impressão."
+            delay="400ms"
           />
           <InfoCard
             icon={<CalendarDays size={20} className="text-[var(--color-accent-2)]" />}
             title="Relatório pós-viagem"
             text="O Anexo II deve ser preenchido em até 5 dias após o retorno da viagem, com descrição das atividades."
+            delay="500ms"
           />
           <InfoCard
             icon={<ShieldCheck size={20} className="text-[var(--color-success)]" />}
             title="Segurança e privacidade"
             text="Seus dados são processados localmente no navegador. Nenhuma informação pessoal é enviada para servidores externos."
+            delay="600ms"
           />
         </div>
       </section>
 
       {/* Segurança e Proteção de Dados */}
-      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
+      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8 animate-in fade-in duration-300">
         <div className="flex items-center gap-3 mb-6">
           <ShieldCheck size={24} className="text-[var(--color-success)]" />
           <h2 className="text-lg font-semibold">Segurança e Proteção de Dados</h2>
@@ -158,7 +164,7 @@ export function HomePage() {
       </section>
 
       {/* Dicas de preenchimento */}
-      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
+      <section className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8 animate-in fade-in duration-300">
         <h2 className="text-lg font-semibold mb-6 text-center">Dicas de preenchimento</h2>
         <div className="space-y-4">
           <TipItem
@@ -203,7 +209,7 @@ function AnexoCard({
   return (
     <Link
       to={to}
-      className="group flex flex-col gap-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-card)] hover:border-[var(--color-accent)]/40 transition-all"
+      className="group flex flex-col gap-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-card)] hover:border-[var(--color-accent)]/40 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
     >
       <div className="flex items-start justify-between">
         <div className="p-2.5 rounded-xl bg-[var(--color-accent)]/10">{icon}</div>
@@ -239,13 +245,17 @@ function InfoCard({
   icon,
   title,
   text,
+  delay,
 }: {
   icon: React.ReactNode
   title: string
   text: string
+  delay?: string
 }) {
   return (
-    <div className="flex items-start gap-3 p-4 rounded-[var(--radius-md)] bg-[var(--color-btn-bg)] border border-[var(--color-border)]">
+    <div
+      className={`flex items-start gap-3 p-4 rounded-[var(--radius-md)] bg-[var(--color-btn-bg)] border border-[var(--color-border)] animate-in fade-in duration-300${delay ? ` delay-[${delay}]` : ''}`}
+    >
       <div className="flex-shrink-0 mt-0.5">{icon}</div>
       <div>
         <h3 className="text-sm font-semibold text-[var(--color-text)] mb-1">{title}</h3>

@@ -29,7 +29,7 @@ from app.services.anexo2_import import extract_prefill_for_anexo2
 from app.services.validate_anexo1 import validate_and_enrich_anexo1
 from app.services.validate_anexo2 import validate_and_enrich_anexo2
 from app.services.docx_render import render_docx_from_template
-from app.services.pdf_convert import convert_docx_to_pdf, LibreOfficeNotAvailableError
+from app.services.pdf_convert import convert_docx_to_pdf, convert_docx_to_pdf_async, LibreOfficeNotAvailableError
 
 logger = logging.getLogger("security")
 
@@ -463,7 +463,7 @@ async def generate_anexo1(request: Request, payload: dict, format: Literal["docx
         return _add_security_headers_to_file_response(response)
 
     try:
-        out_pdf = convert_docx_to_pdf(out_docx)
+        out_pdf = await convert_docx_to_pdf_async(out_docx)
     except LibreOfficeNotAvailableError as exc:
         cleanup([out_docx])
         raise HTTPException(503, str(exc)) from exc
@@ -515,7 +515,7 @@ async def generate_anexo2(request: Request, payload: dict, format: Literal["docx
         return _add_security_headers_to_file_response(response)
 
     try:
-        out_pdf = convert_docx_to_pdf(out_docx)
+        out_pdf = await convert_docx_to_pdf_async(out_docx)
     except LibreOfficeNotAvailableError as exc:
         cleanup([out_docx])
         raise HTTPException(503, str(exc)) from exc

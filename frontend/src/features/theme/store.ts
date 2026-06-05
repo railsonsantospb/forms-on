@@ -32,6 +32,13 @@ function getSystemTheme(): 'dark' | 'light' {
   return 'dark'
 }
 
+function getSystemReducedMotion(): boolean {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }
+  return false
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -41,7 +48,7 @@ export const useThemeStore = create<ThemeState>()(
       grayscale: false,
       lineSpacing: 'normal',
       letterSpacing: 'normal',
-      reducedMotion: false,
+      reducedMotion: getSystemReducedMotion(),
       enhancedFocus: false,
 
       toggleTheme: () => {
@@ -114,7 +121,7 @@ export const useThemeStore = create<ThemeState>()(
           grayscale: false,
           lineSpacing: 'normal',
           letterSpacing: 'normal',
-          reducedMotion: false,
+          reducedMotion: getSystemReducedMotion(),
           enhancedFocus: false,
         })
         const html = document.documentElement
