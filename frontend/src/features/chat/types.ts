@@ -4,6 +4,7 @@ export interface ChatQuickOption {
   label: string
   value: string
   nextState?: string
+  variant?: 'default' | 'primary'
 }
 
 export interface ChatStateDefinition {

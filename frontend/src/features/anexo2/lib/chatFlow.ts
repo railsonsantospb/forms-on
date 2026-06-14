@@ -97,7 +97,37 @@ export function createAnexo2ChatFlow(onComplete: (data: Record<string, unknown>)
       inputMode: 'datetime',
       fieldPath: 'afastamento.ida.0.data_hora',
       formatDisplay: formatDateTimeBR,
-      nextState: 'afastamento.retorno.origem',
+      nextState: 'afastamento.retorno.sugestao',
+    },
+    {
+      id: 'afastamento.retorno.sugestao',
+      question: (data) => {
+        const ida = ((data.afastamento as Record<string, unknown>)?.ida as Record<string, unknown>)?.['0'] as Record<string, unknown>
+        const origem = (ida?.origem as string) || ''
+        const destino = (ida?.destino as string) || ''
+        return `Para o retorno, usar o inverso da ida?\n→ Origem: ${destino}\n→ Destino: ${origem}`
+      },
+      inputMode: 'quick',
+      options: [
+        { label: 'Sim, usar inverso', value: 'sim', variant: 'primary' },
+        { label: 'Não, informar manualmente', value: 'nao' },
+      ],
+      nextState: (_v, data) => {
+        if (_v === 'sim') {
+          const afastamento = data.afastamento as Record<string, unknown>
+          const ida = (afastamento?.ida as Record<string, unknown>)?.['0'] as Record<string, unknown>
+          const idaOrigem = (ida?.origem as string) || ''
+          const idaDestino = (ida?.destino as string) || ''
+          if (!afastamento.retorno) afastamento.retorno = {}
+          const retorno = afastamento.retorno as Record<string, unknown>
+          if (!retorno['0']) retorno['0'] = {}
+          const firstRetorno = retorno['0'] as Record<string, unknown>
+          firstRetorno.origem = idaDestino
+          firstRetorno.destino = idaOrigem
+          return 'afastamento.retorno.data'
+        }
+        return 'afastamento.retorno.origem'
+      },
     },
     makeText('afastamento.retorno.origem', 'Qual cidade foi a origem do retorno? (Cidade/UF)', 'afastamento.retorno.destino', {
       fieldPath: 'afastamento.retorno.0.origem',

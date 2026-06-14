@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState } from 'react'
-import { X, Send, Calendar, Clock, Pencil } from 'lucide-react'
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { X, Send, Calendar, Clock, Pencil, CheckCircle2 } from 'lucide-react'
 import { useChatEngine } from '../lib/useChatEngine'
 import type { ChatFlowDefinition, ChatStateDefinition, ChatEngineState } from '../types'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,12 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
   const [editValue, setEditValue] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
 
+  // Navegação por teclado nas opções quick
+  const [focusedQuickIndex, setFocusedQuickIndex] = useState(0)
+  const currentStateDef = flow.states.find((s) => s.id === engineState.currentStateId)
+  const inputMode = currentStateDef?.inputMode || 'text'
+  const currentOptions = currentStateDef?.options ?? []
+
   useEffect(() => {
     // Quando há erro, scrolla para o erro ficar visível.
     // Quando há nova mensagem, scrolla para o final.
@@ -84,10 +90,12 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
     }
   }, [isOpen, reset, externalState, engineState.messages.length])
 
-  if (!isOpen) return null
+  // Reseta o foco ao entrar em um novo estado
+  useEffect(() => {
+    setFocusedQuickIndex(0)
+  }, [engineState.currentStateId])
 
-  const currentStateDef = flow.states.find((s) => s.id === engineState.currentStateId)
-  const inputMode = currentStateDef?.inputMode || 'text'
+  if (!isOpen) return null
 
   const handleSend = () => {
     const allowEmpty = currentStateDef?.allowEmpty ?? false
@@ -105,9 +113,9 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
     processReply(dtInput + ':00')
   }
 
-  const handleQuick = (value: string) => {
+  const handleQuick = useCallback((value: string) => {
     processReply(value)
-  }
+  }, [processReply])
 
   const openEditModal = (stateId: string | undefined) => {
     if (!stateId) return
@@ -168,6 +176,25 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
     onClose()
   }
 
+  // Navegação por teclado nas opções quick
+  useEffect(() => {
+    if (inputMode !== 'quick' || engineState.isComplete || currentOptions.length === 0) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        setFocusedQuickIndex((i) => (i + 1) % currentOptions.length)
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setFocusedQuickIndex((i) => (i - 1 + currentOptions.length) % currentOptions.length)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        setFocusedQuickIndex((i) => { handleQuick(currentOptions[i].value); return i })
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [inputMode, currentOptions, engineState.isComplete, handleQuick])
+
   const editingStateDef = editingStateId
     ? flow.states.find((s) => s.id === editingStateId)
     : undefined
@@ -193,7 +220,9 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="flex flex-col justify-end min-h-full space-y-4">
-          {engineState.messages.map((msg, index) => (
+          {engineState.messages.map((msg, index) => {
+            const isLastAssistant = msg.role === 'assistant' && index === engineState.messages.length - 1
+            return (
             <div key={msg.id} className={`flex ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm relative group ${
@@ -206,17 +235,25 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
                 {msg.meta && <p className="text-[11px] opacity-70 mt-1">{msg.meta}</p>}
 
                 {/* Quick options */}
-                {msg.quickOptions && msg.role === 'assistant' && (
+                {msg.quickOptions && msg.quickOptions.length > 0 && msg.role === 'assistant' && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {msg.quickOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => handleQuick(opt.value)}
-                        className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-medium hover:bg-[var(--color-accent)]/20 transition-colors"
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                    {msg.quickOptions.map((opt, optIdx) => {
+                      const isFocused = isLastAssistant && !engineState.isComplete && focusedQuickIndex === optIdx
+                      const isPrimary = opt.variant === 'primary'
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleQuick(opt.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            isPrimary
+                              ? 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent)]/90'
+                              : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20'
+                          } ${isFocused ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 scale-105' : ''}`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
 
@@ -232,7 +269,8 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
                 )}
               </div>
             </div>
-          ))}
+            )
+          })}
 
           {engineState.error && (
             <div ref={errorRef} className="flex justify-center">
@@ -242,23 +280,28 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
             </div>
           )}
 
-          {engineState.isComplete && (
-            <div className="flex justify-center pt-2">
-              <Button variant="primary" size="sm" onClick={handleApply}>
-                Aplicar dados no formulário
-              </Button>
-            </div>
-          )}
-
           <div ref={messagesEndRef} />
           </div>
         </div>
 
         {/* Input area */}
-        {!engineState.isComplete && (
-          <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+          {engineState.isComplete ? (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-[var(--color-subtle)] flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-green-500" />
+                Preenchimento concluído!
+              </p>
+              <Button variant="primary" size="lg" onClick={handleApply} className="w-full">
+                Aplicar dados no formulário
+              </Button>
+            </div>
+          ) : (
+            <>
             {inputMode === 'quick' && (
-              <p className="text-xs text-[var(--color-subtle)] text-center">Selecione uma opção acima ↑</p>
+              <p className="text-xs text-[var(--color-subtle)] text-center">
+                Clique numa opção ↑ &nbsp;·&nbsp; <kbd className="px-1 py-0.5 rounded border border-[var(--color-border)] text-[10px]">↑↓</kbd> navegar &nbsp;·&nbsp; <kbd className="px-1 py-0.5 rounded border border-[var(--color-border)] text-[10px]">Enter</kbd> selecionar
+              </p>
             )}
 
             {inputMode === 'text' && (
@@ -318,8 +361,9 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
                 </button>
               </div>
             )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Modal de edição inline */}

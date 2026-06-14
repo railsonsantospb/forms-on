@@ -144,9 +144,20 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
       nextState: (_v, data) => ((data.servidor as Record<string, unknown>)?.tipo_vinculo === 'outro' ? 'servidor.vinculo_outro' : 'servidor.passaporte'),
     },
     makeText('servidor.vinculo_outro', 'Por favor, especifique o vínculo.', 'servidor.passaporte', { fieldPath: 'servidor.vinculo_outro_especificar', min: 2 }),
-    makeText('servidor.passaporte', 'Se for viagem internacional, informe o passaporte. (Deixe em branco se não for)', 'servidor.auxilio_transporte', { fieldPath: 'servidor.passaporte', max: 40, allowEmpty: true }),
+    {
+      id: 'servidor.passaporte',
+      question: 'Se for viagem internacional, informe o passaporte. (Deixe em branco se não for)',
+      inputMode: 'text',
+      fieldPath: 'servidor.passaporte',
+      allowEmpty: true,
+      validation: (v) => (v.trim().length > 40 ? 'Máximo 40 caracteres' : null),
+      nextState: (_v, data) => {
+        const vinculo = (data.servidor as Record<string, unknown>)?.tipo_vinculo
+        return vinculo === 'sepe' ? 'servidor.auxilio_transporte' : 'servidor.lotacao'
+      },
+    },
 
-    // Auxílio transporte e alimentação
+    // Auxílio transporte e alimentação — apenas para SEPE
     makeText('servidor.auxilio_transporte', 'Qual o valor do auxílio transporte? (Deixe em branco se não recebe)', 'servidor.auxilio_alimentacao', {
       fieldPath: 'servidor.auxilio_transporte.valor',
       allowEmpty: true,
@@ -175,7 +186,37 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
       inputMode: 'datetime',
       fieldPath: 'trechos.ida.0.data_hora',
       formatDisplay: formatDateTimeBR,
-      nextState: 'trechos.retorno.origem',
+      nextState: 'trechos.retorno.sugestao',
+    },
+    {
+      id: 'trechos.retorno.sugestao',
+      question: (data) => {
+        const ida = ((data.trechos as Record<string, unknown>)?.ida as Record<string, unknown>)?.['0'] as Record<string, unknown>
+        const origem = (ida?.origem as string) || ''
+        const destino = (ida?.destino as string) || ''
+        return `Para o retorno, usar o inverso da ida?\n→ Origem: ${destino}\n→ Destino: ${origem}`
+      },
+      inputMode: 'quick',
+      options: [
+        { label: 'Sim, usar inverso', value: 'sim', variant: 'primary' },
+        { label: 'Não, informar manualmente', value: 'nao' },
+      ],
+      nextState: (_v, data) => {
+        if (_v === 'sim') {
+          const trechos = data.trechos as Record<string, unknown>
+          const ida = (trechos?.ida as Record<string, unknown>)?.['0'] as Record<string, unknown>
+          const idaOrigem = (ida?.origem as string) || ''
+          const idaDestino = (ida?.destino as string) || ''
+          if (!trechos.retorno) trechos.retorno = {}
+          const retorno = trechos.retorno as Record<string, unknown>
+          if (!retorno['0']) retorno['0'] = {}
+          const firstRetorno = retorno['0'] as Record<string, unknown>
+          firstRetorno.origem = idaDestino
+          firstRetorno.destino = idaOrigem
+          return 'trechos.retorno.data'
+        }
+        return 'trechos.retorno.origem'
+      },
     },
     makeText('trechos.retorno.origem', 'Qual cidade será a origem do retorno? (Cidade/UF)', 'trechos.retorno.destino', {
       fieldPath: 'trechos.retorno.0.origem',
@@ -266,7 +307,7 @@ export function createAnexo1ChatFlow(onComplete: (data: Record<string, unknown>)
         { label: 'Empresa Terrestre', value: 'empresa_terrestre' },
         { label: 'Empresa Aérea', value: 'empresa_aerea' },
         { label: 'Veículo Próprio', value: 'veiculo_proprio' },
-        { label: '✓ Concluir', value: '__done__' },
+        { label: '✓ Concluir seleção', value: '__done__', variant: 'primary' },
       ],
       formatDisplay: (v) => {
         if (v === '__done__') return '✓ Concluído'
