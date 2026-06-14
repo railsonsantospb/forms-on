@@ -3,7 +3,10 @@ import type { ChatFlowDefinition, ChatStateDefinition, ChatMessage, ChatEngineSt
 import { setPath } from '@/lib/object-utils'
 
 function generateId() {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
+  }
+  return Math.random().toString(36).slice(2, 10)
 }
 
 function getQuestion(state: ChatStateDefinition, data: Record<string, unknown>): string {

@@ -21,8 +21,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error)
-    console.error('Error info:', errorInfo)
+    console.error('[ErrorBoundary]', error.message, errorInfo.componentStack)
   }
 
   render() {
@@ -40,17 +39,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <p className="text-sm text-[var(--color-muted)] mb-4">
               Ocorreu um erro inesperado. Por favor, recarregue a página ou tente novamente.
             </p>
-
-            {this.state.error && (
-              <details className="mb-4 p-3 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border)]">
-                <summary className="cursor-pointer font-mono text-xs text-[var(--color-muted)]">
-                  Detalhes do erro
-                </summary>
-                <p className="mt-2 font-mono text-xs text-[var(--color-danger)] break-words">
-                  {this.state.error.message}
-                </p>
-              </details>
-            )}
 
             <button
               onClick={() => window.location.reload()}

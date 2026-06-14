@@ -2,21 +2,40 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
 import { Card, CardContent } from '@/components/ui/card'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, ArrowLeftRight } from 'lucide-react'
 
 interface TrechosStepProps {
   type: 'ida' | 'retorno'
   trechos: { origem: string; destino: string; data_hora: string }[]
+  idaTrechos?: { origem: string; destino: string; data_hora: string }[]
   onAdd: () => void
   onRemove: (i: number) => void
   onUpdate: (i: number, field: string, value: string) => void
   errors: Record<string, string>
 }
 
-export function TrechosStep({ type, trechos, onAdd, onRemove, onUpdate, errors }: TrechosStepProps) {
+export function TrechosStep({ type, trechos, idaTrechos, onAdd, onRemove, onUpdate, errors }: TrechosStepProps) {
   const prefix = `trechos.${type}`
+
+  const handleMirrorIda = () => {
+    if (!idaTrechos || idaTrechos.length === 0) return
+    const lastIda = idaTrechos[idaTrechos.length - 1]
+    onUpdate(0, 'origem', lastIda.destino)
+    onUpdate(0, 'destino', lastIda.origem)
+  }
+
   return (
     <div className="space-y-4">
+      {type === 'retorno' && idaTrechos && idaTrechos.length > 0 && (
+        <button
+          type="button"
+          onClick={handleMirrorIda}
+          className="flex items-center gap-2 text-sm text-[var(--color-accent)] hover:opacity-80 transition-opacity"
+        >
+          <ArrowLeftRight size={14} />
+          Usar destinos da ida invertidos
+        </button>
+      )}
       {trechos.map((t, i) => (
         <Card key={i}>
           <CardContent className="pt-4 space-y-3">

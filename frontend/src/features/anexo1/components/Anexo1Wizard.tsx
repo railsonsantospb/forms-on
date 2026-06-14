@@ -358,6 +358,7 @@ export function Anexo1Wizard() {
               <TrechosStep
                 type={store.currentStep === 3 ? 'ida' : 'retorno'}
                 trechos={data.trechos?.[store.currentStep === 3 ? 'ida' : 'retorno'] || []}
+                idaTrechos={store.currentStep === 4 ? (data.trechos?.ida || []) : undefined}
                 onAdd={() => store.addTrecho(store.currentStep === 3 ? 'ida' : 'retorno')}
                 onRemove={(i) => store.removeTrecho(store.currentStep === 3 ? 'ida' : 'retorno', i)}
                 onUpdate={(i, field, value) => store.updateTrecho(store.currentStep === 3 ? 'ida' : 'retorno', i, field, value)}
