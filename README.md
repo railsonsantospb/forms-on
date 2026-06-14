@@ -649,7 +649,7 @@ As referências a seguir fundamentam as escolhas técnicas, arquiteturais e de e
 
 ## Licença
 
-Este sistema foi desenvolvido no âmbito da **Universidade Federal da Paraíba (UFPB)**, com envolvimento do **Centro de Ciências Humanas, Sociais e Agrárias (CCHSA)** e do **Centro Acadêmico de Vitória de Santo Antão (CAVN)**.
+Este sistema foi desenvolvido no âmbito da **Universidade Federal da Paraíba (UFPB)**, com envolvimento do **Centro de Ciências Humanas, Sociais e Agrárias (CCHSA)** e do **Colégio Agrícola Vidal de Negreiros (CAVN)**.
 
 O código-fonte é de propriedade da UFPB. Uso, reprodução ou distribuição dependem de autorização formal da instituição.
 
