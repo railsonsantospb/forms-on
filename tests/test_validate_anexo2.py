@@ -9,8 +9,6 @@ import os
 from copy import deepcopy
 from unittest.mock import patch
 
-import pytest
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.services.validate_anexo2 import validate_and_enrich_anexo2

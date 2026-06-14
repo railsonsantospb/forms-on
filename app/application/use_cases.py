@@ -3,9 +3,8 @@
 from pathlib import Path
 from typing import Literal
 
-from app.domain.entities import Anexo1Payload
 from app.domain.services import DateValidationService, PrazoValidationService
-from app.domain.ports import DraftRepository, DocumentRenderer, PDFConverter
+from app.domain.ports import DocumentRenderer, PDFConverter
 
 
 class PreviewAnexo1UseCase:

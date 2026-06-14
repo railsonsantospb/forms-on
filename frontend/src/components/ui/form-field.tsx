@@ -1,24 +1,8 @@
 import { cn } from '@/lib/cn'
 import { Label } from './label'
+import { useId } from 'react'
 import type { ReactNode } from 'react'
-import { useMemo, createContext, useContext } from 'react'
-
-interface FormFieldContextType {
-  fieldId: string
-  errorId: string
-  error?: string
-  required?: boolean
-}
-
-const FormFieldContext = createContext<FormFieldContextType | undefined>(undefined)
-
-export function useFormFieldContext() {
-  const context = useContext(FormFieldContext)
-  if (!context) {
-    return { fieldId: '', errorId: '', error: undefined, required: false }
-  }
-  return context
-}
+import { FormFieldContext } from './useFormFieldContext'
 
 interface FormFieldProps {
   label: string
@@ -31,10 +15,11 @@ interface FormFieldProps {
 
 export function FormField({ label, error, children, required, className, htmlFor }: FormFieldProps) {
   // Generate unique ID if not provided
-  const fieldId = useMemo(() => htmlFor || `field-${Math.random().toString(36).substr(2, 9)}`, [htmlFor])
+  const baseId = useId()
+  const fieldId = htmlFor || `field-${baseId}`
   const errorId = `${fieldId}-error`
 
-  const contextValue: FormFieldContextType = {
+  const contextValue = {
     fieldId,
     errorId,
     error,

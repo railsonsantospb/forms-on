@@ -5,7 +5,7 @@ import logging
 import sys
 import time
 import uuid
-from typing import Any
+from typing import Any, Optional
 
 
 class JSONFormatter(logging.Formatter):
@@ -52,8 +52,6 @@ def get_logger(name: str) -> logging.Logger:
 
     return logger
 
-
-from typing import Optional
 
 def set_trace_id(logger: logging.Logger, trace_id: Optional[str] = None) -> str:
     """Generate or set a trace ID for request correlation."""

@@ -13,6 +13,7 @@ from typing import Literal, Union
 from tempfile import NamedTemporaryFile
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, Request
+from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
@@ -29,7 +30,7 @@ from app.services.anexo2_import import extract_prefill_for_anexo2
 from app.services.validate_anexo1 import validate_and_enrich_anexo1
 from app.services.validate_anexo2 import validate_and_enrich_anexo2
 from app.services.docx_render import render_docx_from_template
-from app.services.pdf_convert import convert_docx_to_pdf, convert_docx_to_pdf_async, LibreOfficeNotAvailableError
+from app.services.pdf_convert import convert_docx_to_pdf_async, LibreOfficeNotAvailableError
 
 from app.core.logging import get_logger
 from app.middleware.trace import TraceIDMiddleware
@@ -43,8 +44,6 @@ app = FastAPI(
     openapi_url=None,
 )
 
-# API Versioning: v1 router (aliases to legacy routes for backward compatibility)
-from fastapi import APIRouter
 api_v1_router = APIRouter(prefix="/v1")
 
 # Middlewares de segurança e tracing

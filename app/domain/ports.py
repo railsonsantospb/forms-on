@@ -1,6 +1,5 @@
 """Repository interfaces (Ports) - define contracts for data access."""
 
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Protocol
 

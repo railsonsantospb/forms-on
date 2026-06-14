@@ -2,7 +2,7 @@ import { cn } from '@/lib/cn'
 import { Button } from './button'
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useId } from 'react'
 
 interface ModalProps {
   open: boolean
@@ -19,8 +19,9 @@ interface ModalProps {
 export function Modal({ open, onClose, title, description, children, icon, actions, className, isAlert = false }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
-  const titleId = `modal-title-${Math.random().toString(36).substr(2, 9)}`
-  const descriptionId = `modal-description-${Math.random().toString(36).substr(2, 9)}`
+  const baseId = useId()
+  const titleId = `modal-title-${baseId}`
+  const descriptionId = `modal-description-${baseId}`
 
   // Focus trap and return focus
   useEffect(() => {

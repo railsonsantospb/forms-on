@@ -9,14 +9,12 @@ import os
 from copy import deepcopy
 from unittest.mock import patch
 
-import pytest
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from app.services.validate_anexo1 import validate_and_enrich_anexo1
 
 MOCK_PLACEHOLDERS = {"campo": "valor"}
 MOCK_ROWS = {"ida": [], "retorno": []}
-
-from app.services.validate_anexo1 import validate_and_enrich_anexo1
 
 _patches = [
     patch("app.services.validate_anexo1.build_placeholders_anexo1", return_value=MOCK_PLACEHOLDERS),

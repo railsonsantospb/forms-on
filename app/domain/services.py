@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from typing import Literal, Optional
 
-from app.domain.entities import Anexo1Payload, Trecho
+from app.domain.entities import Trecho
 
 
 class ValidationResult:
