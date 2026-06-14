@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { X, Send, Calendar, Clock, Pencil, CheckCircle2 } from 'lucide-react'
 import { useChatEngine } from '../lib/useChatEngine'
 import type { ChatFlowDefinition, ChatStateDefinition, ChatEngineState } from '../types'
@@ -52,7 +52,11 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
   const [focusedQuickIndex, setFocusedQuickIndex] = useState(0)
   const currentStateDef = flow.states.find((s) => s.id === engineState.currentStateId)
   const inputMode = currentStateDef?.inputMode || 'text'
-  const currentOptions = currentStateDef?.options ?? []
+  const currentOptions = useMemo(
+    () => currentStateDef?.options ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [engineState.currentStateId, flow.states],
+  )
 
   useEffect(() => {
     // Quando há erro, scrolla para o erro ficar visível.
@@ -95,6 +99,29 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
     setFocusedQuickIndex(0)
   }, [engineState.currentStateId])
 
+  const handleQuick = useCallback((value: string) => {
+    processReply(value)
+  }, [processReply])
+
+  // Navegação por teclado nas opções quick — deve ficar antes do early return
+  useEffect(() => {
+    if (!isOpen || inputMode !== 'quick' || engineState.isComplete || currentOptions.length === 0) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        setFocusedQuickIndex((i) => (i + 1) % currentOptions.length)
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setFocusedQuickIndex((i) => (i - 1 + currentOptions.length) % currentOptions.length)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        setFocusedQuickIndex((i) => { handleQuick(currentOptions[i].value); return i })
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [isOpen, inputMode, currentOptions, engineState.isComplete, handleQuick])
+
   if (!isOpen) return null
 
   const handleSend = () => {
@@ -112,10 +139,6 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
     if (!dtInput) return
     processReply(dtInput + ':00')
   }
-
-  const handleQuick = useCallback((value: string) => {
-    processReply(value)
-  }, [processReply])
 
   const openEditModal = (stateId: string | undefined) => {
     if (!stateId) return
@@ -175,25 +198,6 @@ export function ChatModal({ isOpen, onClose, flow, onApply, title = 'Assistente 
     onApply(engineState.data)
     onClose()
   }
-
-  // Navegação por teclado nas opções quick
-  useEffect(() => {
-    if (inputMode !== 'quick' || engineState.isComplete || currentOptions.length === 0) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-        e.preventDefault()
-        setFocusedQuickIndex((i) => (i + 1) % currentOptions.length)
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-        e.preventDefault()
-        setFocusedQuickIndex((i) => (i - 1 + currentOptions.length) % currentOptions.length)
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        setFocusedQuickIndex((i) => { handleQuick(currentOptions[i].value); return i })
-      }
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [inputMode, currentOptions, engineState.isComplete, handleQuick])
 
   const editingStateDef = editingStateId
     ? flow.states.find((s) => s.id === editingStateId)
