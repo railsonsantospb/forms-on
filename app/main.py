@@ -1,5 +1,5 @@
 import json
-import logging
+# import logging  # Replaced by structured logging
 import os
 import time
 import uuid
@@ -31,7 +31,10 @@ from app.services.validate_anexo2 import validate_and_enrich_anexo2
 from app.services.docx_render import render_docx_from_template
 from app.services.pdf_convert import convert_docx_to_pdf, convert_docx_to_pdf_async, LibreOfficeNotAvailableError
 
-logger = logging.getLogger("security")
+from app.core.logging import get_logger
+from app.middleware.trace import TraceIDMiddleware
+
+logger = get_logger("security")
 
 app = FastAPI(
     title="UFPB Diárias Wizard",
@@ -40,9 +43,14 @@ app = FastAPI(
     openapi_url=None,
 )
 
-# Middlewares de segurança
+# API Versioning: v1 router (aliases to legacy routes for backward compatibility)
+from fastapi import APIRouter
+api_v1_router = APIRouter(prefix="/v1")
+
+# Middlewares de segurança e tracing
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
+app.add_middleware(TraceIDMiddleware)
 
 # Detecta se existe build do React
 FRONTEND_DIST = Path("frontend/dist")
@@ -183,13 +191,28 @@ def _hash_draft_token(token: str) -> str:
 def _require_draft_token(request: Request, draft: dict) -> None:
     expected = draft.get("_token_hash")
     provided = request.headers.get("x-draft-token", "")
+    trace_id = getattr(request.state, "trace_id", "unknown")
     if not expected or not provided:
         client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
-        logger.warning("draft_token_missing ip=%s path=%s", client_ip, request.url.path)
+        logger.warning(
+            "draft_token_missing",
+            extra={
+                "trace_id": trace_id,
+                "ip": client_ip,
+                "path": str(request.url.path),
+            },
+        )
         raise HTTPException(403, "Token do rascunho obrigatório.")
     if not hmac.compare_digest(expected, _hash_draft_token(provided)):
         client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
-        logger.warning("draft_token_invalid ip=%s path=%s", client_ip, request.url.path)
+        logger.warning(
+            "draft_token_invalid",
+            extra={
+                "trace_id": trace_id,
+                "ip": client_ip,
+                "path": str(request.url.path),
+            },
+        )
         raise HTTPException(403, "Token do rascunho inválido.")
 
 
@@ -205,16 +228,26 @@ def _load_404_html() -> str:
 # ===== Handlers de erro globais =====
 @app.exception_handler(ValidationError)
 async def validation_error_handler(request: Request, exc: ValidationError):
+    trace_id = getattr(request.state, "trace_id", "unknown")
     client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
-    logger.warning("schema_validation_failed ip=%s path=%s errors=%d", client_ip, request.url.path, len(exc.errors))
+    logger.warning(
+        "schema_validation_failed",
+        extra={
+            "trace_id": trace_id,
+            "ip": client_ip,
+            "path": str(request.url.path),
+            "errors_count": len(exc.errors),
+        },
+    )
     return JSONResponse(
         status_code=422,
-        content={"detail": "Dados inválidos.", "errors": exc.errors},
+        content={"detail": "Dados inválidos.", "errors": exc.errors, "trace_id": trace_id},
     )
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    trace_id = getattr(request.state, "trace_id", "unknown")
     # Para requisições web (navegador), retorna página HTML 404
     accept_header = request.headers.get("accept", "")
     is_browser_request = (
@@ -231,16 +264,26 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"detail": exc.detail, "trace_id": trace_id},
         headers=exc.headers,
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
+    trace_id = getattr(request.state, "trace_id", "unknown")
+    logger.error(
+        "unhandled_exception",
+        extra={
+            "trace_id": trace_id,
+            "path": str(request.url.path),
+            "exception_type": type(exc).__name__,
+        },
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=500,
-        content={"detail": "Erro interno do servidor."},
+        content={"detail": "Erro interno do servidor.", "trace_id": trace_id},
     )
 
 
@@ -578,15 +621,106 @@ def _add_security_headers_to_response(response: Union[FileResponse, HTMLResponse
     return response
 
 
+# ===== API v1 Routes (aliases for backward compatibility) =====
+# These provide the same functionality under /api/v1/ prefix
+# All legacy /api/ routes remain functional
+
+@api_v1_router.post("/drafts")
+@rate_limit(requests_per_minute=20)
+async def create_draft_v1(request: Request, kind: Literal["anexo1", "anexo2"]):
+    """Create a new draft (v1 API)."""
+    return await create_draft(request, kind)
+
+
+@api_v1_router.get("/server-date")
+async def server_date_v1(request: Request):
+    """Get current server date (v1 API)."""
+    return await server_date(request)
+
+
+@api_v1_router.get("/drafts/{draft_id}")
+@rate_limit(requests_per_minute=60)
+async def get_draft_v1(request: Request, draft_id: str):
+    """Get draft by ID (v1 API)."""
+    return await get_draft(request, draft_id)
+
+
+@api_v1_router.patch("/drafts/{draft_id}")
+@rate_limit(requests_per_minute=30)
+async def patch_draft_v1(request: Request, draft_id: str, data: dict):
+    """Update draft (v1 API)."""
+    return await patch_draft(request, draft_id, data)
+
+
+@api_v1_router.post("/anexo1/preview")
+@rate_limit(requests_per_minute=30)
+async def preview_anexo1_v1(request: Request, payload: dict):
+    """Preview Anexo I (v1 API)."""
+    return await preview_anexo1(request, payload)
+
+
+@api_v1_router.post("/anexo2/preview")
+@rate_limit(requests_per_minute=30)
+async def preview_anexo2_v1(request: Request, payload: dict):
+    """Preview Anexo II (v1 API)."""
+    return await preview_anexo2(request, payload)
+
+
+@api_v1_router.post("/anexo1/generate")
+@rate_limit(requests_per_minute=10)
+async def generate_anexo1_v1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+    """Generate Anexo I document (v1 API)."""
+    return await generate_anexo1(request, payload, format)
+
+
+@api_v1_router.post("/anexo2/generate")
+@rate_limit(requests_per_minute=10)
+async def generate_anexo2_v1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+    """Generate Anexo II document (v1 API)."""
+    return await generate_anexo2(request, payload, format)
+
+
+@api_v1_router.post("/anexo1/prefill-from-anexo1")
+@rate_limit(requests_per_minute=10)
+async def prefill_anexo1_from_anexo1_v1(request: Request, file: UploadFile = File(...)):
+    """Extract data from Anexo I file for prefill (v1 API)."""
+    return await prefill_anexo1_from_anexo1(request, file)
+
+
+@api_v1_router.post("/anexo2/prefill-from-anexo1")
+@rate_limit(requests_per_minute=10)
+async def prefill_anexo2_from_anexo1_v1(request: Request, file: UploadFile = File(...)):
+    """Extract data from Anexo I file for Anexo II prefill (v1 API)."""
+    return await prefill_anexo2_from_anexo1(request, file)
+
+
+@api_v1_router.post("/anexo2/prefill-from-anexo2")
+@rate_limit(requests_per_minute=10)
+async def prefill_anexo2_from_anexo2_v1(request: Request, file: UploadFile = File(...)):
+    """Extract data from Anexo II file for prefill (v1 API)."""
+    return await prefill_anexo2_from_anexo2(request, file)
+
+
+# Include the v1 router
+app.include_router(api_v1_router, prefix="/api")
+
+
 # ===== Catch-all para SPA React ou fallback 404 =====
 # Deve ser a ÚLTIMA rota.
 if HAS_REACT_BUILD:
     @app.get("/{full_path:path}")
-    def serve_react(full_path: str):
+    def serve_react(full_path: str, request: Request):
         # Sanitiza path para evitar path traversal (../etc/passwd)
         # Rejeita imediatamente qualquer path que contenha '..' antes de normalizar
         if ".." in full_path or _looks_like_system_probe(full_path):
-            logger.warning("path_traversal_attempt path=%s", full_path)
+            trace_id = getattr(request.state, "trace_id", "unknown")
+            logger.warning(
+                "path_traversal_attempt",
+                extra={
+                    "trace_id": trace_id,
+                    "path": full_path,
+                },
+            )
             return HTMLResponse(content=_load_404_html(), status_code=404)
 
         safe_path = os.path.normpath(full_path).lstrip("/")
