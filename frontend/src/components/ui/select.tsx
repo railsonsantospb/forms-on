@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn'
 import { forwardRef, type SelectHTMLAttributes } from 'react'
-import { useFormFieldContext } from './form-field'
+import { useFormFieldContext } from './useFormFieldContext'
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
   ({ className, children, 'aria-describedby': ariaDescribedBy, ...props }, ref) => {

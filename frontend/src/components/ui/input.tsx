@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn'
 import { forwardRef, type InputHTMLAttributes } from 'react'
-import { useFormFieldContext } from './form-field'
+import { useFormFieldContext } from './useFormFieldContext'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, 'aria-describedby': ariaDescribedBy, ...props }, ref) => {

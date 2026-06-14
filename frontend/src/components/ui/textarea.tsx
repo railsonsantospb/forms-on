@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn'
 import { forwardRef, type TextareaHTMLAttributes } from 'react'
-import { useFormFieldContext } from './form-field'
+import { useFormFieldContext } from './useFormFieldContext'
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, 'aria-describedby': ariaDescribedBy, ...props }, ref) => {
