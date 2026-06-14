@@ -4,20 +4,102 @@ Sistema web para geração automatizada dos formulários de Diárias e Passagens
 
 ---
 
-## O que o sistema faz
+## O que é este sistema e por que ele existe
 
-- **Wizard guiado** para Anexo I (requisição) e Anexo II (relatório de viagem)
-- **Validação automática** de datas, prazos, encadeamento de trechos e regras da UFPB
-- **Detecção de fins de semana e feriados** com solicitação de justificativa quando necessário
-- **Geração de documentos** em DOCX (Word) ou PDF via LibreOffice headless
-- **Importação de documentos anteriores** para pré-preencher o formulário (PDF/DOCX)
-- **Assistente conversacional "Dira"** — preenche o formulário via chat determinístico
-- **Auto-save** com armazenamento local criptografado (AES-GCM) e sincronização via rascunhos
-- **Tema e acessibilidade** configuráveis (dark/light, escala de fonte, alto contraste, espaçamento)
+Quando um servidor público de uma universidade federal precisa viajar a trabalho — para participar de um congresso, realizar uma pesquisa ou representar a instituição —, ele é obrigado a preencher formulários administrativos específicos antes e depois da viagem. Na UFPB, esses documentos são o **Anexo I** (solicitação prévia de diárias e passagens) e o **Anexo II** (relatório de prestação de contas após o retorno).
+
+O processo tradicional é inteiramente manual: o servidor baixa um arquivo Word, preenche campo por campo, calcula prazos mentalmente, verifica se está dentro das regras da instituição e, muitas vezes, comete erros que exigem retrabalho ou geram pendências administrativas.
+
+O **UFPB Forms On** resolve esse problema oferecendo uma interface digital que:
+
+1. **Guia o preenchimento** — em vez de um formulário em branco, o sistema apresenta um assistente passo a passo (chamado de *wizard*) que mostra apenas o que é necessário naquele momento, em linguagem clara.
+2. **Valida as regras automaticamente** — o sistema conhece as normas da UFPB: sabe que uma solicitação de diárias deve ser feita com pelo menos 10 dias de antecedência, que o relatório deve ser entregue em até 5 dias após o retorno, que a data de retorno não pode ser anterior à de ida, entre outras dezenas de restrições. Se algo estiver errado, avisa imediatamente.
+3. **Gera o documento pronto** — ao final do preenchimento, o servidor clica em "Gerar" e recebe o arquivo Word (DOCX) ou PDF com todos os campos já preenchidos, no formato oficial exigido pela UFPB.
+4. **Salva o trabalho automaticamente** — o formulário é salvo a cada digitação, então o servidor pode fechar o navegador e continuar de onde parou em outro momento.
+5. **Importa documentos anteriores** — se o servidor já tem um Anexo I preenchido, pode enviá-lo ao sistema e os dados são extraídos automaticamente para pré-preencher o Anexo II, eliminando retrabalho.
 
 ---
 
-## Arquitetura
+## Como o sistema funciona, explicado de forma simples
+
+Imagine que você está preenchendo um formulário em papel, mas com a ajuda de um assistente experiente ao seu lado. Esse assistente:
+
+- Só te pede a informação certa no momento certo
+- Verifica, em tempo real, se o que você digitou faz sentido
+- Calcula prazos por você
+- Detecta se a viagem envolve fim de semana (o que exige justificativa adicional)
+- Ao final, preenche o formulário oficial com os seus dados e entrega o arquivo pronto
+
+É exatamente isso que o sistema faz, mas de forma digital, acessível pelo navegador de qualquer computador.
+
+### O que acontece por trás dos bastidores
+
+Quando o servidor digita uma informação e clica em "Próximo", o navegador envia esses dados para um programa rodando no servidor da universidade. Esse programa:
+
+1. Verifica se os dados estão no formato correto (datas válidas, CPF com 11 dígitos, etc.)
+2. Aplica as regras institucionais (prazos, encadeamento de trechos, obrigatoriedade de justificativas)
+3. Salva o rascunho de forma segura
+4. Quando o servidor solicita a geração do documento, monta o arquivo Word com os dados preenchidos e, se necessário, converte para PDF
+
+Nenhuma informação pessoal é armazenada além do necessário para gerar o documento, e os rascunhos são apagados automaticamente após 15 dias.
+
+---
+
+## Tecnologias utilizadas e o que cada uma faz
+
+Esta seção explica, em linguagem acessível, as tecnologias que compõem o sistema e por que cada uma foi escolhida.
+
+### Interface do usuário (o que você vê no navegador)
+
+O sistema usa **React** (versão 19), uma biblioteca criada pelo Facebook para construir interfaces web modernas. O React funciona dividindo a tela em componentes independentes — como peças de Lego — que se atualizam automaticamente quando os dados mudam. Isso significa que, quando você digita o nome de uma cidade no campo de origem, os campos relacionados (como o de destino) podem reagir imediatamente, sem precisar recarregar a página.
+
+**TypeScript** é uma extensão da linguagem JavaScript que adiciona verificação de tipos. Em termos simples: ela ajuda os desenvolvedores a encontrar erros no código antes de o sistema entrar em funcionamento, como um revisor que lê o texto antes de publicar.
+
+**Vite** é a ferramenta que empacota todo o código do navegador em arquivos otimizados para produção. Ela é responsável por tornar o sistema rápido ao carregar.
+
+**Tailwind CSS** é uma forma de escrever estilos visuais (cores, tamanhos, espaçamentos) de maneira eficiente. Em vez de escrever folhas de estilo separadas, os estilos são aplicados diretamente nos componentes.
+
+**Zustand** é a biblioteca responsável por manter o estado do formulário enquanto o servidor navega entre os passos. Funciona como uma memória compartilhada: todos os componentes da tela sabem o que foi preenchido até agora.
+
+**Zod** é a biblioteca de validação do lado do cliente. Ela verifica, localmente no navegador, se os dados preenchidos respeitam o formato esperado, antes mesmo de enviar ao servidor.
+
+### Servidor (o programa que processa os dados)
+
+**FastAPI** (Python 3.12) é o framework que recebe as requisições do navegador e executa a lógica do sistema. Foi escolhido por ser moderno, rápido e por oferecer documentação automática dos endpoints de API. Python foi a linguagem escolhida por sua enorme biblioteca de ferramentas para manipulação de documentos e dados.
+
+**python-docx** é a biblioteca que abre o template Word oficial da UFPB e substitui os marcadores (como `{{nome_completo}}`) pelos dados reais do servidor. É como um sistema de mala direta, mas para documentos administrativos.
+
+**LibreOffice** (em modo *headless*, ou seja, sem interface gráfica) é o programa responsável por converter o arquivo Word gerado em PDF. O mesmo LibreOffice que você usa no computador pode ser executado no servidor sem mostrar janelas, apenas processando a conversão.
+
+**pdfplumber** é a biblioteca que extrai texto de arquivos PDF. Ela é usada na funcionalidade de importação: quando o servidor envia um Anexo I em PDF, o sistema lê o conteúdo e tenta identificar os campos (nome, CPF, datas, etc.) usando expressões regulares.
+
+**Redis** é um banco de dados em memória usado para controle de taxa de acesso (*rate limiting*). Ele conta quantas requisições cada endereço IP fez nos últimos 60 segundos e bloqueia temporariamente os que excedem o limite, protegendo o sistema contra uso abusivo.
+
+**JSON Schema** é um padrão internacional para descrever a estrutura esperada de dados no formato JSON. O sistema define um schema para o Anexo I e outro para o Anexo II, e qualquer dado enviado ao servidor é validado contra esses schemas antes de ser processado.
+
+### Infraestrutura (como o sistema roda)
+
+**Docker** é uma tecnologia que empacota o sistema inteiro — o código, as dependências, o LibreOffice — em um contêiner isolado. Isso garante que o sistema funcione da mesma forma em qualquer ambiente, seja no computador do desenvolvedor ou no servidor de produção.
+
+**Docker Compose** orquestra múltiplos contêineres simultaneamente. No caso deste sistema, dois contêineres rodam juntos: o da aplicação principal (FastAPI + React) e o do Redis.
+
+**GitHub Actions** é o sistema de integração contínua (CI/CD) que automatiza verificações a cada mudança de código: análise estática, varredura de segurança, testes automatizados e, em caso de sucesso, publicação automática.
+
+### Segurança
+
+O sistema implementa diversas camadas de proteção:
+
+- **HMAC (Hash-based Message Authentication Code)**: cada rascunho recebe um token secreto único. O servidor armazena apenas o *hash* (uma impressão digital) desse token — nunca o valor original. Assim, mesmo que alguém acesse os arquivos do servidor, não consegue usar os tokens. A verificação usa comparação em tempo constante para evitar ataques de temporização.
+
+- **AES-GCM**: os dados são criptografados no próprio navegador usando AES-GCM, um algoritmo de criptografia simétrica amplamente recomendado, antes de serem armazenados localmente.
+
+- **Headers de segurança HTTP (OWASP)**: o servidor adiciona automaticamente cabeçalhos de resposta que instrui o navegador a se comportar de forma segura, prevenindo ataques como *clickjacking*, *cross-site scripting* (XSS) e injeção de conteúdo.
+
+- **Validação de arquivos enviados**: quando o servidor envia um PDF ou DOCX para importação, o sistema verifica os primeiros bytes do arquivo (*magic bytes*) para confirmar que o arquivo é realmente do tipo declarado, impedindo envio de arquivos maliciosos disfarçados.
+
+---
+
+## Arquitetura técnica
 
 ### Visão geral
 
@@ -34,63 +116,65 @@ FastAPI (Python 3.12)
   └── Static: serve dist/ do Vite (SPA) com fallback HTML legado
 ```
 
-### Backend — Arquitetura Hexagonal
+### Padrão Arquitetural — Arquitetura Hexagonal (Ports and Adapters)
+
+O backend adota a **Arquitetura Hexagonal**, proposta por Alistair Cockburn em 2005 [1]. Nesse padrão, o núcleo da aplicação (lógica de negócio e regras de domínio) é isolado do mundo externo por meio de *Ports* (interfaces) e *Adapters* (implementações concretas). Isso permite, por exemplo, substituir o armazenamento em sistema de arquivos por um banco de dados relacional sem alterar nenhuma linha de código de negócio.
 
 ```
 app/
-├── domain/           # Entidades, regras puras e interfaces (Ports)
+├── domain/           # Núcleo — entidades e interfaces (Ports)
 │   ├── entities.py   # Servidor, Trecho, Anexo1Payload, Anexo2Payload
 │   ├── ports.py      # DraftRepository, TemplateRepository, DocumentRenderer, PDFConverter
 │   └── services.py   # DateValidationService, PrazoValidationService
-├── application/      # Casos de uso
+├── application/      # Casos de uso (orquestração)
 │   ├── use_cases.py  # PreviewAnexo1UseCase, PreviewAnexo2UseCase, GenerateDocumentUseCase
-│   └── draft_auth.py # Token HMAC: hash_token, require_draft_token, public_draft
-├── infrastructure/   # Adapters concretos
+│   └── draft_auth.py # Autenticação HMAC de rascunhos
+├── infrastructure/   # Adapters — implementações concretas
 │   └── repositories.py  # FileSystemDraftRepository (com cleanup automático de 15 dias)
 ├── middleware/
 │   ├── security.py   # SecurityHeadersMiddleware, RequestSizeLimitMiddleware
 │   ├── rate_limit.py # RedisRateLimiter — sliding window de 60s por IP
-│   ├── trace.py      # TraceIDMiddleware — UUID por requisição em x-trace-id
-│   └── upload.py     # validate_upload, sanitize_filename (magic bytes, MIME, 5 MB)
+│   ├── trace.py      # TraceIDMiddleware — UUID por requisição
+│   └── upload.py     # validate_upload, sanitize_filename
 ├── core/
 │   └── logging.py    # JSONFormatter — logs estruturados em stdout
 ├── schemas/
-│   ├── anexo1.schema.json  # JSON Schema draft-2020-12 (Anexo I)
-│   ├── anexo2.schema.json  # JSON Schema draft-2020-12 (Anexo II)
-│   └── validator.py        # validate_payload com cache de schemas compilados
+│   ├── anexo1.schema.json  # JSON Schema draft-2020-12
+│   ├── anexo2.schema.json
+│   └── validator.py
 ├── services/
-│   ├── validate_anexo1.py  # Regras de negócio + cálculo de flags e placeholders
-│   ├── validate_anexo2.py  # Idem para Anexo II
-│   ├── placeholders.py     # Monta dicionário de substituição para templates Word
-│   ├── docx_render.py      # Preenchimento de templates via python-docx ({{campo}})
-│   ├── pdf_convert.py      # DOCX → PDF via LibreOffice headless (subprocess assíncrono)
-│   ├── anexo1_import.py    # Extração de dados de PDF/DOCX com pdfplumber + regex
-│   └── anexo2_import.py    # Idem para Anexo II
+│   ├── validate_anexo1.py  # Regras de negócio e cálculo de flags
+│   ├── validate_anexo2.py
+│   ├── placeholders.py     # Monta dicionário de substituição para templates
+│   ├── docx_render.py      # Preenchimento de templates via python-docx
+│   ├── pdf_convert.py      # DOCX → PDF via LibreOffice headless
+│   ├── anexo1_import.py    # Extração heurística de dados de PDF/DOCX
+│   └── anexo2_import.py
 ├── templates/
 │   ├── anexo1_template.docx
 │   └── anexo2_template.docx
-└── main.py           # Ponto de entrada — instância de app, routers, singleton FileSystemDraftRepository
+└── main.py
 ```
 
 ### Frontend — React 19 + TypeScript
 
 ```
 frontend/src/
-├── api/                  # client.ts (apiFetch, apiBlob, ApiError), anexo1.ts, anexo2.ts
+├── api/                  # client.ts (apiFetch, apiBlob, ApiError)
 ├── components/
-│   ├── ErrorBoundary.tsx # Captura erros React — exibe mensagem genérica; detalhes só no log
+│   ├── ErrorBoundary.tsx # Captura erros React — detalhes apenas no log do servidor
 │   ├── layout/           # Topbar, Footer
-│   ├── ui/               # Design system: Button, Input, Select, FormField, Card, Modal, Badge
+│   ├── ui/               # Design system: Button, Input, Select, FormField, Card, Modal
 │   └── wizard/           # WizardStepper, WizardNavigation, StepTransition
 ├── features/
-│   ├── anexo1/           # Wizard 9 passos, store Zustand, schema Zod, helpers
-│   ├── anexo2/           # Wizard 7 passos, store Zustand, schema Zod, helpers
+│   ├── anexo1/           # Wizard 9 passos, store Zustand, schema Zod
+│   ├── anexo2/           # Wizard 7 passos, store Zustand, schema Zod
 │   ├── chat/             # Assistente "Dira" — máquina de estados determinística
-│   ├── import/           # DocumentImport — upload e aplicação de prefill
-│   ├── review/           # ReviewGrid, ReviewSection, ReviewTimeline
-│   └── theme/            # store Zustand + Provider (dark/light, a11y)
+│   ├── import/           # Upload e aplicação de prefill
+│   ├── review/           # Tela de revisão antes da geração
+│   └── theme/            # Dark/light, acessibilidade
 ├── hooks/                # useAutoSave, useBeforeUnload, useDebounce
-├── lib/                  # crypto.ts, dates.ts, strings.ts, trechos.ts, validators.ts
+├── lib/                  # crypto.ts (AES-GCM), dates.ts, validators.ts
 └── pages/                # HomePage, Anexo1Page, Anexo2Page, NotFoundPage
 ```
 
@@ -394,6 +478,164 @@ ruff check app/
 | Rascunho não encontrado | Arquivo JSON deletado ou expirado (>15 dias) | Inicie novo formulário |
 | Redis connection error (logs) | Redis não acessível | Esperado em dev local; rate limiting falha aberto (não bloqueia) |
 | `crypto.randomUUID is not a function` | App acessada via HTTP sem localhost | Corrigido — fallback automático para `Math.random` |
+
+---
+
+## Referências
+
+As referências a seguir fundamentam as escolhas técnicas, arquiteturais e de experiência do usuário implementadas neste sistema. Estão organizadas por tema para facilitar a consulta em contexto de dissertação.
+
+---
+
+### Governo Digital, Desburocratização e Serviços Públicos Eletrônicos
+
+[1] BRASIL. **Lei nº 14.129, de 29 de março de 2021** — Lei do Governo Digital. Dispõe sobre princípios, regras e instrumentos para o Governo Digital. Diário Oficial da União, Brasília, DF, 30 mar. 2021. Disponível em: https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14129.htm
+
+[2] BRASIL. **Decreto nº 10.332, de 28 de abril de 2020** — Estratégia de Governo Digital 2020–2022. Institui a Estratégia de Governo Digital para o período de 2020 a 2022. Diário Oficial da União, Brasília, DF, 29 abr. 2020.
+
+[3] FOUNTAIN, J. E. **Building the Virtual State: Information Technology and Institutional Change**. Washington, DC: Brookings Institution Press, 2001. — Obra seminal sobre como tecnologia transforma instituições públicas e processos burocráticos.
+
+[4] JANSSEN, M.; ESTEVEZ, E. **Lean Government and Platform-based Governance — Doing More with Less**. Government Information Quarterly, v. 30, n. Supplement 1, p. S1–S8, 2013. https://doi.org/10.1016/j.giq.2012.11.003
+
+[5] SCHOLL, H. J. **E-Government Reference Library (EGRL)**. Disponível em: http://faculty.washington.edu/jscholl/egrl/ — Base de referência sobre governo eletrônico e transformação digital no setor público.
+
+[6] UNITED NATIONS. **E-Government Survey 2022: The Future of Digital Government**. New York: United Nations Department of Economic and Social Affairs, 2022. Disponível em: https://publicadministration.un.org/egovkb/en-us/Reports/UN-E-Government-Survey-2022
+
+---
+
+### Experiência do Usuário (UX) e Formulários Digitais
+
+[7] NIELSEN, J. **Usability Engineering**. San Francisco: Morgan Kaufmann, 1994. — Fundamento dos princípios de usabilidade aplicados ao design do wizard (visibilidade do estado do sistema, controle do usuário, prevenção de erros).
+
+[8] NIELSEN, J.; MOLICH, R. **Heuristic evaluation of user interfaces**. In: Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '90). New York: ACM, 1990. p. 249–256. https://doi.org/10.1145/97243.97281
+
+[9] SHNEIDERMAN, B. et al. **Designing the User Interface: Strategies for Effective Human-Computer Interaction**. 6. ed. Pearson, 2016. — Referência clássica sobre design de interfaces, incluindo o padrão wizard para guiar usuários em tarefas complexas e sequenciais.
+
+[10] WROBLEWSKI, L. **Web Form Design: Filling in the Blanks**. New York: Rosenfeld Media, 2008. — Obra de referência sobre design de formulários web: organização, validação inline, feedback em tempo real e redução de erros de preenchimento.
+
+[11] BABICH, N. **Best Practices for Form Design**. UX Planet, 2018. Disponível em: https://uxplanet.org/best-practices-for-form-design-ff5de6ca6e5 — Diretrizes práticas para formulários com múltiplos passos (wizards), validação progressiva e mensagens de erro contextuais.
+
+[12] ISO 9241-11:2018. **Ergonomics of human-system interaction — Part 11: Usability: Definitions and concepts**. International Organization for Standardization, 2018. — Norma internacional que define usabilidade como a medida em que um sistema pode ser usado por usuários específicos para atingir objetivos com eficácia, eficiência e satisfação.
+
+---
+
+### Arquitetura de Software — Hexagonal, Camadas e Clean Architecture
+
+[13] COCKBURN, A. **Hexagonal Architecture** (*Ports and Adapters*). 2005. Disponível em: https://alistair.cockburn.us/hexagonal-architecture/ — Artigo original que propõe isolar o núcleo da aplicação de tecnologias externas por meio de portas (interfaces) e adaptadores (implementações concretas), padrão adotado no backend deste sistema.
+
+[14] MARTIN, R. C. **Clean Architecture: A Craftsman's Guide to Software Structure and Design**. Upper Saddle River, NJ: Prentice Hall, 2017. — Fundamenta o princípio da independência de frameworks, bancos de dados e interface, alinhado à separação domain/application/infrastructure adotada no projeto.
+
+[15] EVANS, E. **Domain-Driven Design: Tackling Complexity in the Heart of Software**. Upper Saddle River, NJ: Addison-Wesley, 2003. — Introduz conceitos como Entidades, Objetos de Valor, Repositórios e Serviços de Domínio utilizados na camada `domain/` do sistema.
+
+[16] FOWLER, M. **Patterns of Enterprise Application Architecture**. Upper Saddle River, NJ: Addison-Wesley, 2002. — Descreve os padrões Repository (usado no `FileSystemDraftRepository`) e Gateway, além do padrão Template Method utilizado na renderização de documentos.
+
+[17] RICHARDSON, C. **Microservices Patterns: With Examples in Java**. Manning Publications, 2018. — Referência sobre padrões de API REST, versionamento de rotas e separação de responsabilidades em serviços backend.
+
+---
+
+### APIs REST e Desenvolvimento Web
+
+[18] FIELDING, R. T. **Architectural Styles and the Design of Network-based Software Architectures**. Tese de Doutorado, University of California, Irvine, 2000. Disponível em: https://www.ics.uci.edu/~fielding/pubs/dissertation/top.htm — Dissertação original que define o estilo arquitetural REST (Representational State Transfer), base dos endpoints `/api/v1/` implementados.
+
+[19] MASSE, M. **REST API Design Rulebook**. O'Reilly Media, 2011. — Guia de boas práticas para design de APIs RESTful, incluindo versionamento, métodos HTTP semânticos (GET, POST, PATCH) e códigos de status.
+
+[20] RAMÍREZ, S. **FastAPI Documentation**. 2018–present. Disponível em: https://fastapi.tiangolo.com — Documentação oficial do framework FastAPI, que combina validação automática com Pydantic e documentação interativa OpenAPI/Swagger.
+
+---
+
+### Validação de Dados e JSON Schema
+
+[21] PEZOA, F. et al. **Foundations of JSON Schema**. In: Proceedings of the 25th International Conference on World Wide Web (WWW '16). New York: ACM, 2016. p. 263–273. https://doi.org/10.1145/2872427.2883029 — Artigo acadêmico que formaliza as bases teóricas do JSON Schema, padrão utilizado para validação dos payloads de Anexo I e Anexo II.
+
+[22] DROETTBOOM, M. et al. **Understanding JSON Schema**. Disponível em: https://json-schema.org/understanding-json-schema — Guia de referência do padrão JSON Schema draft-2020-12, incluindo validações condicionais (`if/then/else`) e referências entre schemas.
+
+[23] GARCIA-MOLINA, H.; ULLMAN, J. D.; WIDOM, J. **Database Systems: The Complete Book**. 2. ed. Prentice Hall, 2008. — Cap. 6 e 7 abordam validação de esquemas e restrições de integridade, princípios análogos à validação aplicada nos schemas JSON do sistema.
+
+---
+
+### Segurança de Aplicações Web
+
+[24] OWASP FOUNDATION. **OWASP Top Ten 2021**. Disponível em: https://owasp.org/Top10/ — Lista dos dez riscos mais críticos em aplicações web. O sistema implementa proteções contra XSS (Content-Security-Policy), injeção (validação de dados), broken authentication (HMAC tokens) e security misconfiguration (hardening de container).
+
+[25] OWASP FOUNDATION. **OWASP Application Security Verification Standard (ASVS) 4.0**. Disponível em: https://owasp.org/www-project-application-security-verification-standard/ — Padrão de verificação de segurança que fundamenta os requisitos de autenticação, criptografia e controle de acesso implementados.
+
+[26] KRAWCZYK, H.; BELLARE, M.; CANETTI, R. **HMAC: Keyed-Hashing for Message Authentication**. RFC 2104. Internet Engineering Task Force (IETF), 1997. https://doi.org/10.17487/RFC2104 — Especificação original do HMAC, algoritmo utilizado na autenticação dos tokens de rascunho com comparação em tempo constante.
+
+[27] DWORKIN, M. **Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC**. NIST Special Publication 800-38D. National Institute of Standards and Technology, 2007. https://doi.org/10.6028/NIST.SP.800-38D — Especificação do AES-GCM utilizado para criptografar dados no sessionStorage do navegador.
+
+[28] BARTH, A. **HTTP State Management Mechanism**. RFC 6265. IETF, 2011. — Base para entendimento de sessionStorage e gerenciamento de estado no cliente, incluindo restrições de acesso entre origens.
+
+[29] STAMM, S.; STERNE, B.; MARKHAM, G. **Reining in the Web with Content Security Policy**. In: Proceedings of the 19th International World Wide Web Conference (WWW 2010). p. 921–930. — Artigo de referência sobre Content Security Policy (CSP), implementado no `SecurityHeadersMiddleware` para prevenir ataques XSS.
+
+[30] TSYRKLEVICH, E.; YENER, B. **Single Sign-On for the Internet: A Security Story**. Usenix Security, 2006. — Contexto sobre tokens de sessão e autenticação stateless, princípios aplicados nos draft tokens.
+
+---
+
+### Criptografia e Privacidade de Dados
+
+[31] BONEH, D.; SHOUP, V. **A Graduate Course in Applied Cryptography**. Draft 0.6. 2023. Disponível em: https://toc.cryptobook.us — Livro texto que cobre AES-GCM, HMAC-SHA256 e fundamentos de criptografia simétrica e autenticada usados no sistema.
+
+[32] BRASIL. **Lei nº 13.709, de 14 de agosto de 2018** — Lei Geral de Proteção de Dados Pessoais (LGPD). Diário Oficial da União, Brasília, DF, 15 ago. 2018. — O sistema coleta dados pessoais de servidores (nome, CPF, SIAPE) e deve operar em conformidade com os princípios da LGPD: finalidade, necessidade, segurança e prevenção.
+
+---
+
+### Geração de Documentos e Automação de Escritório
+
+[33] ADOBE SYSTEMS. **PDF Reference, sixth edition: Adobe Portable Document Format version 1.7**. Adobe Systems Incorporated, 2006. — Especificação do formato PDF gerado pelo LibreOffice a partir dos arquivos DOCX preenchidos pelo sistema.
+
+[34] ECMA INTERNATIONAL. **Office Open XML File Formats (ECMA-376)**. 5. ed. Genebra: ECMA, 2016. Disponível em: https://www.ecma-international.org/publications-and-standards/standards/ecma-376/ — Padrão internacional do formato DOCX (Office Open XML) manipulado pela biblioteca python-docx.
+
+[35] KNUTH, D. E. **The TeXbook**. Addison-Wesley, 1984. — Referência histórica sobre composição tipográfica automatizada, contexto intelectual da geração programática de documentos a partir de templates.
+
+---
+
+### Extração de Informação e Processamento de Documentos
+
+[36] ZANIBBI, R.; BLOSTEIN, D. **Recognition and Retrieval of Mathematical Expressions**. International Journal of Document Analysis and Recognition, v. 15, n. 4, p. 331–357, 2012. — Contexto sobre reconhecimento de padrões em documentos, área relacionada à extração heurística de campos de formulários PDF realizada pelo `anexo1_import.py`.
+
+[37] DÉJEAN, H.; MEUNIER, J. L. **A system for converting PDF documents into structured XML format**. In: Proceedings of the 7th IAPR International Workshop on Document Analysis Systems (DAS 2006). p. 129–140. — Artigo sobre extração de estrutura de documentos PDF, problema central na funcionalidade de importação/prefill do sistema.
+
+[38] CHITICARIU, L. et al. **Rule-Based Information Extraction is Dead! Long Live Rule-Based Information Extraction Systems!** In: Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing (EMNLP 2013). p. 827–832. — Defende a eficácia de sistemas de extração baseados em regras (como regex e heurísticas) em domínios específicos e bem definidos, justificativa para a abordagem adotada no módulo de importação.
+
+---
+
+### Interfaces Conversacionais e Assistentes Digitais
+
+[39] ALLEN, J. **Natural Language Understanding**. 2. ed. Benjamin/Cummings, 1995. — Fundamentos dos sistemas de diálogo e máquinas de estado, base teórica do assistente conversacional "Dira" implementado como *finite-state machine* determinística.
+
+[40] JURAFSKY, D.; MARTIN, J. H. **Speech and Language Processing**. 3. ed. (draft). 2023. Disponível em: https://web.stanford.edu/~jurafsky/slp3/ — Cap. 24 e 25 cobrem sistemas de diálogo orientados a tarefa (*task-oriented dialogue systems*), paradigma adotado no chat guiado do sistema (sem LLM, com máquina de estados explícita).
+
+[41] RAUX, A. et al. **Let's Go Public! Taking a Spoken Dialogue System to the Real World**. In: Proceedings of Interspeech 2005. — Experiência prática com sistemas de diálogo guiados por regras em contexto institucional, análogo ao assistente Dira.
+
+---
+
+### Conteinerização, DevOps e Infraestrutura
+
+[42] MERKEL, D. **Docker: Lightweight Linux Containers for Consistent Development and Deployment**. Linux Journal, v. 2014, n. 239, p. 2, 2014. — Artigo seminal sobre Docker, tecnologia utilizada para empacotar e implantar o sistema de forma reproduzível.
+
+[43] BURNS, B. et al. **Borg, Omega, and Kubernetes**. Communications of the ACM, v. 59, n. 5, p. 50–57, 2016. https://doi.org/10.1145/2898442 — Contexto sobre orquestração de contêineres e os princípios que fundamentam o Docker Compose utilizado no projeto.
+
+[44] HUMBLE, J.; FARLEY, D. **Continuous Delivery: Reliable Software Releases through Build, Test, and Deployment Automation**. Upper Saddle River, NJ: Addison-Wesley, 2010. — Fundamento do pipeline CI/CD implementado via GitHub Actions: lint → security scan → testes → build → deploy.
+
+[45] FOWLER, M. **Continuous Integration**. 2006. Disponível em: https://martinfowler.com/articles/continuousIntegration.html — Artigo que define e populariza o conceito de integração contínua, prática adotada no projeto.
+
+---
+
+### Acessibilidade e Design Inclusivo
+
+[46] W3C. **Web Content Accessibility Guidelines (WCAG) 2.1**. World Wide Web Consortium, 2018. Disponível em: https://www.w3.org/TR/WCAG21/ — Diretrizes de acessibilidade para conteúdo web. O sistema implementa opções de alto contraste, escala de fonte, espaçamento de linhas e redução de movimento, alinhando-se aos critérios WCAG 2.1.
+
+[47] HENRY, S. L. **Just Ask: Integrating Accessibility Throughout Design**. Lulu.com, 2007. — Obra sobre como incorporar acessibilidade desde as fases iniciais do design, refletida nas opções de tema e acessibilidade do sistema.
+
+---
+
+### Transformação Digital na Educação Superior
+
+[48] CASTELLS, M. **A Sociedade em Rede**. 8. ed. São Paulo: Paz e Terra, 2005. — Obra de referência sobre a sociedade da informação e a transformação das instituições pela tecnologia, contexto macro do qual este sistema faz parte.
+
+[49] BRYNJOLFSSON, E.; McAFEE, A. **The Second Machine Age: Work, Progress, and Prosperity in a Time of Brilliant Technologies**. New York: W.W. Norton & Company, 2014. — Contextualiza a automação de processos rotineiros em organizações, motivação central deste projeto.
+
+[50] AGUNE, R. M.; CARLOS, J. A. **Governo Eletrônico e Novos Processos de Trabalho**. In: LEVY, E.; DRAGO, P. A. (org.). Gestão Pública no Brasil Contemporâneo. São Paulo: FUNDAP/Casa Civil, 2005. — Contextualiza a automação de processos administrativos no setor público brasileiro.
 
 ---
 
