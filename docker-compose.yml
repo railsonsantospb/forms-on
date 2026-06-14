@@ -21,7 +21,7 @@ services:
   wizard:
     build: .
     ports:
-      - "127.0.0.1:8090:8080"
+      - "127.0.0.1:8090:8090"
     volumes:
       - ./app:/app/app:ro
       - ./app/templates:/app/app/templates:ro
@@ -34,7 +34,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -58,7 +58,7 @@ services:
           cpus: '0.5'
           memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8090/"]
       interval: 30s
       timeout: 10s
       retries: 3

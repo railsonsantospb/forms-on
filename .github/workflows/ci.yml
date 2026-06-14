@@ -169,9 +169,9 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Test Docker image health
         run: |
-          docker run -d --name test-wizard -p 8080:8080 forms-on-wizard:latest
+          docker run -d --name test-wizard -p 8090:8090 forms-on-wizard:latest
           sleep 10
-          curl -f http://localhost:8080/ || exit 1
+          curl -f http://localhost:8090/ || exit 1
           docker stop test-wizard
 
   # ==========================================
