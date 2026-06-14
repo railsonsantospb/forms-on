@@ -1,4 +1,5 @@
 """Rate limiting com Redis para persistência entre restarts e workers."""
+
 from __future__ import annotations
 
 import logging
@@ -100,9 +101,8 @@ def rate_limit(requests_per_minute: int = 30):
                         break
 
             if request:
-                client_ip = (
-                    request.headers.get("x-real-ip")
-                    or (request.client.host if request.client else "unknown")
+                client_ip = request.headers.get("x-real-ip") or (
+                    request.client.host if request.client else "unknown"
                 )
                 if not await endpoint_limiter.is_allowed(client_ip):
                     logger.warning(
@@ -118,4 +118,5 @@ def rate_limit(requests_per_minute: int = 30):
             return await func(*args, **kwargs)
 
         return wrapper
+
     return decorator

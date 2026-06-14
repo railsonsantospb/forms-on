@@ -24,8 +24,10 @@ def convert_docx_to_pdf(docx_path: Path) -> Path:
         "--nolockcheck",
         "--nodefault",
         "--nofirststartwizard",
-        "--convert-to", "pdf",
-        "--outdir", str(out_dir),
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        str(out_dir),
         str(docx_path),
     ]
     try:

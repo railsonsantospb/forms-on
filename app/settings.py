@@ -13,8 +13,16 @@ def _path_from_env(name: str, default: Path) -> Path:
 
 @dataclass(frozen=True)
 class Settings:
-    data_dir: Path = field(default_factory=lambda: _path_from_env("FORMS_ON_DATA_DIR", PROJECT_ROOT / "data"))
-    templates_dir: Path = field(default_factory=lambda: _path_from_env("FORMS_ON_TEMPLATES_DIR", APP_DIR / "templates"))
+    data_dir: Path = field(
+        default_factory=lambda: _path_from_env(
+            "FORMS_ON_DATA_DIR", PROJECT_ROOT / "data"
+        )
+    )
+    templates_dir: Path = field(
+        default_factory=lambda: _path_from_env(
+            "FORMS_ON_TEMPLATES_DIR", APP_DIR / "templates"
+        )
+    )
     # conforme o formulário:
     prazo_sem_passagens_dias: int = 10
     prazo_com_passagens_dias: int = 30

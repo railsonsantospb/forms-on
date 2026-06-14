@@ -1,4 +1,5 @@
 """Validação de payloads contra schemas JSON."""
+
 from __future__ import annotations
 
 import json
@@ -53,8 +54,10 @@ def validate_payload(name: str, payload: dict[str, Any]) -> None:
         errors = []
         for error in exc.context or [exc]:
             path = ".".join(str(p) for p in error.path) if error.path else "root"
-            errors.append({
-                "field": path,
-                "message": error.message,
-            })
+            errors.append(
+                {
+                    "field": path,
+                    "message": error.message,
+                }
+            )
         raise ValidationError(errors) from exc

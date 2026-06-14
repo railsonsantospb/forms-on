@@ -40,11 +40,7 @@ class DocumentRenderer(Protocol):
     """Port for document rendering operations."""
 
     def render(
-        self,
-        template_path: Path,
-        output_path: Path,
-        placeholders: dict,
-        **kwargs
+        self, template_path: Path, output_path: Path, placeholders: dict, **kwargs
     ) -> None:
         """Render a document from template with placeholders."""
         ...

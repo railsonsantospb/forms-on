@@ -1,4 +1,5 @@
 """Testes de integração para a API FastAPI."""
+
 from __future__ import annotations
 
 import sys
@@ -40,10 +41,18 @@ PAYLOAD_ANEXO1 = {
     "motivo_viagem": "Participação em congresso internacional de pesquisa científica",
     "trechos": {
         "ida": [
-            {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"}
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            }
         ],
         "retorno": [
-            {"origem": "Recife", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"}
+            {
+                "origem": "Recife",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            }
         ],
     },
     "missao": {
@@ -69,10 +78,18 @@ PAYLOAD_ANEXO2 = {
     },
     "afastamento": {
         "ida": [
-            {"origem": "João Pessoa / PB", "destino": "Recife / PE", "data_hora": "2026-05-20T08:00"}
+            {
+                "origem": "João Pessoa / PB",
+                "destino": "Recife / PE",
+                "data_hora": "2026-05-20T08:00",
+            }
         ],
         "retorno": [
-            {"origem": "Recife / PE", "destino": "João Pessoa / PB", "data_hora": "2026-05-22T18:00"}
+            {
+                "origem": "Recife / PE",
+                "destino": "João Pessoa / PB",
+                "data_hora": "2026-05-22T18:00",
+            }
         ],
     },
     "atividades_tabela": [{"data": "2026-05-20", "atividades": "Reunião"}],
@@ -106,7 +123,9 @@ class TestHtmlRoutes:
         assert "text/html" in r.headers["content-type"]
         assert len(r.content) > 0
 
-    @pytest.mark.skipif(not HAS_REACT_BUILD, reason="SPA fallback só existe com React build")
+    @pytest.mark.skipif(
+        not HAS_REACT_BUILD, reason="SPA fallback só existe com React build"
+    )
     def test_404_page(self):
         r = client.get("/pagina-que-nao-existe")
         assert r.status_code == 200  # SPA fallback
@@ -163,14 +182,19 @@ class TestDrafts:
     def test_get_draft_with_wrong_token(self):
         create = client.post("/api/drafts?kind=anexo1")
         draft_id = create.json()["draft_id"]
-        r = client.get(f"/api/drafts/{draft_id}", headers={"x-draft-token": "wrong-token"})
+        r = client.get(
+            f"/api/drafts/{draft_id}", headers={"x-draft-token": "wrong-token"}
+        )
         assert r.status_code == 403
         assert "inválido" in r.json()["detail"]
 
     def test_get_draft_success(self):
         create = client.post("/api/drafts?kind=anexo1")
         data = create.json()
-        r = client.get(f"/api/drafts/{data['draft_id']}", headers={"x-draft-token": data["draft_token"]})
+        r = client.get(
+            f"/api/drafts/{data['draft_id']}",
+            headers={"x-draft-token": data["draft_token"]},
+        )
         assert r.status_code == 200
         assert r.json()["kind"] == "anexo1"
 
@@ -186,7 +210,10 @@ class TestDrafts:
         assert r.json()["ok"] is True
 
         # Verify patch persisted
-        r2 = client.get(f"/api/drafts/{data['draft_id']}", headers={"x-draft-token": data["draft_token"]})
+        r2 = client.get(
+            f"/api/drafts/{data['draft_id']}",
+            headers={"x-draft-token": data["draft_token"]},
+        )
         assert r2.json()["data"]["campo_teste"] == "valor"
 
     def test_invalid_draft_id(self):
@@ -194,7 +221,10 @@ class TestDrafts:
         assert r.status_code == 400
 
     def test_draft_not_found(self):
-        r = client.get("/api/drafts/12345678-1234-1234-1234-123456789abc", headers={"x-draft-token": "token"})
+        r = client.get(
+            "/api/drafts/12345678-1234-1234-1234-123456789abc",
+            headers={"x-draft-token": "token"},
+        )
         assert r.status_code == 404
 
     def test_delete_not_allowed(self):
@@ -233,12 +263,18 @@ class TestGenerateDocx:
     def test_generate_anexo1_docx(self):
         r = client.post("/api/anexo1/generate?format=docx", json=PAYLOAD_ANEXO1)
         assert r.status_code == 200
-        assert r.headers["content-type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        assert (
+            r.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 
     def test_generate_anexo2_docx(self):
         r = client.post("/api/anexo2/generate?format=docx", json=PAYLOAD_ANEXO2)
         assert r.status_code == 200
-        assert r.headers["content-type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        assert (
+            r.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 
     def test_generate_anexo1_invalid_payload(self):
         r = client.post("/api/anexo1/generate?format=docx", json={})

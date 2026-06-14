@@ -1,4 +1,5 @@
 """Middlewares de segurança para a aplicação FastAPI."""
+
 from __future__ import annotations
 
 from fastapi import Request, Response
@@ -69,15 +70,16 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                     body_size = int(content_length)
                 except ValueError:
                     from fastapi.responses import JSONResponse
+
                     return JSONResponse(
-                        status_code=400,
-                        content={"detail": "Content-Length inválido."}
+                        status_code=400, content={"detail": "Content-Length inválido."}
                     )
                 if body_size > self.MAX_BODY_SIZE:
                     from fastapi.responses import JSONResponse
+
                     return JSONResponse(
                         status_code=413,
-                        content={"detail": "Payload muito grande. Limite: 10MB."}
+                        content={"detail": "Payload muito grande. Limite: 10MB."},
                     )
 
         return await call_next(request)

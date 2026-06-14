@@ -18,8 +18,7 @@ class FileSystemDraftRepository(DraftRepository):
         """Save draft to JSON file."""
         file_path = self.data_dir / f"{draft_id}.json"
         file_path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8"
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         try:
             file_path.chmod(0o600)
@@ -40,10 +39,7 @@ class FileSystemDraftRepository(DraftRepository):
 
     def list_all(self) -> list[str]:
         """List all draft IDs."""
-        return [
-            f.stem for f in self.data_dir.glob("*.json")
-            if f.is_file()
-        ]
+        return [f.stem for f in self.data_dir.glob("*.json") if f.is_file()]
 
 
 class FileSystemTemplateRepository(TemplateRepository):

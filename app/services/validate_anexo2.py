@@ -43,7 +43,9 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
     # campos obrigatórios do proposto
     proposto = payload.get("proposto") or {}
     if not (proposto.get("cargo_funcao") or "").strip():
-        errors.append({"field": "proposto.cargo_funcao", "message": "Informe o cargo/função."})
+        errors.append(
+            {"field": "proposto.cargo_funcao", "message": "Informe o cargo/função."}
+        )
     if not (proposto.get("telefone") or "").strip():
         errors.append({"field": "proposto.telefone", "message": "Informe o telefone."})
     if not (proposto.get("email") or "").strip():
@@ -58,16 +60,25 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         if not ida_list:
             errors.append(
-                {"field": "afastamento.ida", "message": "Informe ao menos um trecho de ida."}
+                {
+                    "field": "afastamento.ida",
+                    "message": "Informe ao menos um trecho de ida.",
+                }
             )
         if not ret_list:
             errors.append(
-                {"field": "afastamento.retorno", "message": "Informe ao menos um trecho de retorno."}
+                {
+                    "field": "afastamento.retorno",
+                    "message": "Informe ao menos um trecho de retorno.",
+                }
             )
         for t in ida_list:
             if not t.get("data_hora"):
                 errors.append(
-                    {"field": "afastamento.ida", "message": "Informe datas/horas válidas para todos os trechos de ida."}
+                    {
+                        "field": "afastamento.ida",
+                        "message": "Informe datas/horas válidas para todos os trechos de ida.",
+                    }
                 )
                 break
         for t in ret_list:
@@ -84,16 +95,26 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
         ret = _parse_dt(ret_list[-1]["data_hora"]) if ret_list else None
         if ida and ret and ret < ida:
             errors.append(
-                {"field": "afastamento", "message": "A data/hora de retorno não pode ser anterior à ida."}
+                {
+                    "field": "afastamento",
+                    "message": "A data/hora de retorno não pode ser anterior à ida.",
+                }
             )
     except Exception:
-        errors.append({"field": "afastamento", "message": "Informe datas/horas válidas para ida e retorno."})
+        errors.append(
+            {
+                "field": "afastamento",
+                "message": "Informe datas/horas válidas para ida e retorno.",
+            }
+        )
         ida = ret = None
 
     # Normaliza alteracoes_cancelamentos_noshow (protege contra string de versão antiga)
     alt_raw = payload.get("alteracoes_cancelamentos_noshow")
     if isinstance(alt_raw, list):
-        payload["alteracoes_cancelamentos_noshow"] = [a for a in alt_raw if isinstance(a, dict)]
+        payload["alteracoes_cancelamentos_noshow"] = [
+            a for a in alt_raw if isinstance(a, dict)
+        ]
     else:
         payload["alteracoes_cancelamentos_noshow"] = []
 
@@ -111,7 +132,10 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
     atv_tabela = payload.get("atividades_tabela") or []
     if not atv_tabela:
         errors.append(
-            {"field": "atividades_tabela", "message": "Adicione pelo menos uma linha na tabela de atividades."}
+            {
+                "field": "atividades_tabela",
+                "message": "Adicione pelo menos uma linha na tabela de atividades.",
+            }
         )
     else:
         tem_atividade_valida = any(
@@ -148,7 +172,9 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
             )
 
     for i in range(len(ida_list) - 1):
-        if _norm_cidade(ida_list[i].get("destino")) != _norm_cidade(ida_list[i + 1].get("origem")):
+        if _norm_cidade(ida_list[i].get("destino")) != _norm_cidade(
+            ida_list[i + 1].get("origem")
+        ):
             errors.append(
                 {
                     "field": f"afastamento.ida.{i + 1}.origem",
@@ -156,7 +182,9 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
                 }
             )
     for i in range(len(ret_list) - 1):
-        if _norm_cidade(ret_list[i].get("destino")) != _norm_cidade(ret_list[i + 1].get("origem")):
+        if _norm_cidade(ret_list[i].get("destino")) != _norm_cidade(
+            ret_list[i + 1].get("origem")
+        ):
             errors.append(
                 {
                     "field": f"afastamento.retorno.{i + 1}.origem",
@@ -165,7 +193,9 @@ def validate_and_enrich_anexo2(payload: Dict[str, Any]) -> Dict[str, Any]:
             )
 
     if ida_list and ret_list:
-        if _norm_cidade(ida_list[-1].get("destino")) != _norm_cidade(ret_list[0].get("origem")):
+        if _norm_cidade(ida_list[-1].get("destino")) != _norm_cidade(
+            ret_list[0].get("origem")
+        ):
             errors.append(
                 {
                     "field": "afastamento.retorno.0.origem",

@@ -2,6 +2,7 @@
 Testes para app/services/validate_anexo2.py
 Cobre: afastamento, atividades, prazo de relatório, cidades, justificativas.
 """
+
 from __future__ import annotations
 
 import sys
@@ -35,11 +36,28 @@ BASE_PAYLOAD = {
         "orgao": {"tipo": "cchsa"},
     },
     "afastamento": {
-        "ida": [{"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"}],
-        "retorno": [{"origem": "Recife", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"}],
+        "ida": [
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            }
+        ],
+        "retorno": [
+            {
+                "origem": "Recife",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            }
+        ],
     },
     "atividades_tabela": [
-        {"data": "2026-05-21", "horario": "09:00", "cidade": "Recife", "atividades": "Participação no evento"},
+        {
+            "data": "2026-05-21",
+            "horario": "09:00",
+            "cidade": "Recife",
+            "atividades": "Participação no evento",
+        },
     ],
     "viagem_realizada": "sim",
     "flags": {},
@@ -91,7 +109,11 @@ class TestAfastamento:
 
     def test_normaliza_dict_para_lista(self):
         p = make_payload()
-        p["afastamento"]["ida"] = {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"}
+        p["afastamento"]["ida"] = {
+            "origem": "João Pessoa",
+            "destino": "Recife",
+            "data_hora": "2026-05-20T08:00",
+        }
         r = validate_and_enrich_anexo2(p)
         assert r["ok"] is True
 
@@ -123,11 +145,23 @@ class TestEncadeamentoAfastamento:
     def test_multiplos_trechos_encadeados_corretos(self):
         p = make_payload()
         p["afastamento"]["ida"] = [
-            {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"},
-            {"origem": "Recife", "destino": "Fortaleza", "data_hora": "2026-05-21T08:00"},
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            },
+            {
+                "origem": "Recife",
+                "destino": "Fortaleza",
+                "data_hora": "2026-05-21T08:00",
+            },
         ]
         p["afastamento"]["retorno"] = [
-            {"origem": "Fortaleza", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"},
+            {
+                "origem": "Fortaleza",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            },
         ]
         r = validate_and_enrich_anexo2(p)
         assert r["ok"] is True
@@ -135,11 +169,23 @@ class TestEncadeamentoAfastamento:
     def test_multiplos_trechos_encadeamento_quebrado(self):
         p = make_payload()
         p["afastamento"]["ida"] = [
-            {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"},
-            {"origem": "Natal", "destino": "Fortaleza", "data_hora": "2026-05-21T08:00"},
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            },
+            {
+                "origem": "Natal",
+                "destino": "Fortaleza",
+                "data_hora": "2026-05-21T08:00",
+            },
         ]
         p["afastamento"]["retorno"] = [
-            {"origem": "Fortaleza", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"},
+            {
+                "origem": "Fortaleza",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            },
         ]
         r = validate_and_enrich_anexo2(p)
         assert r["ok"] is False
@@ -160,25 +206,47 @@ class TestAtividades:
         assert "atividades_tabela" in error_fields(r)
 
     def test_tabela_sem_atividades_preenchidas(self):
-        r = validate_and_enrich_anexo2(make_payload(atividades_tabela=[
-            {"data": "2026-05-21", "horario": "09:00", "cidade": "Recife", "atividades": ""},
-            {"data": "2026-05-22", "horario": "10:00", "cidade": "Recife", "atividades": "   "},
-        ]))
+        r = validate_and_enrich_anexo2(
+            make_payload(
+                atividades_tabela=[
+                    {
+                        "data": "2026-05-21",
+                        "horario": "09:00",
+                        "cidade": "Recife",
+                        "atividades": "",
+                    },
+                    {
+                        "data": "2026-05-22",
+                        "horario": "10:00",
+                        "cidade": "Recife",
+                        "atividades": "   ",
+                    },
+                ]
+            )
+        )
         assert r["ok"] is False
         assert "atividades_tabela" in error_fields(r)
 
     def test_tabela_com_uma_atividade_valida(self):
-        r = validate_and_enrich_anexo2(make_payload(atividades_tabela=[
-            {"data": "2026-05-21", "atividades": ""},
-            {"data": "2026-05-22", "atividades": "Reunião técnica"},
-        ]))
+        r = validate_and_enrich_anexo2(
+            make_payload(
+                atividades_tabela=[
+                    {"data": "2026-05-21", "atividades": ""},
+                    {"data": "2026-05-22", "atividades": "Reunião técnica"},
+                ]
+            )
+        )
         assert r["ok"] is True
 
     def test_tabela_com_item_nao_dict_ignorado(self):
-        r = validate_and_enrich_anexo2(make_payload(atividades_tabela=[
-            "string_invalida",
-            {"data": "2026-05-21", "atividades": "Reunião técnica"},
-        ]))
+        r = validate_and_enrich_anexo2(
+            make_payload(
+                atividades_tabela=[
+                    "string_invalida",
+                    {"data": "2026-05-21", "atividades": "Reunião técnica"},
+                ]
+            )
+        )
         assert r["ok"] is True
 
 
@@ -203,18 +271,22 @@ class TestPrazoRelatorio:
         assert "justificativa_prestacao_contas_fora_prazo" in error_fields(r)
 
     def test_fora_do_prazo_com_justificativa_ok(self):
-        r = validate_and_enrich_anexo2(make_payload(
-            data_relatorio="2026-05-28",
-            justificativa_prestacao_contas_fora_prazo="Atraso por motivo de saúde devidamente atestado.",
-        ))
+        r = validate_and_enrich_anexo2(
+            make_payload(
+                data_relatorio="2026-05-28",
+                justificativa_prestacao_contas_fora_prazo="Atraso por motivo de saúde devidamente atestado.",
+            )
+        )
         assert r["ok"] is True
         assert r["flags"]["prestacao_contas_fora_prazo"] is True
 
     def test_fora_do_prazo_justificativa_espacos_rejeitada(self):
-        r = validate_and_enrich_anexo2(make_payload(
-            data_relatorio="2026-05-28",
-            justificativa_prestacao_contas_fora_prazo="   ",
-        ))
+        r = validate_and_enrich_anexo2(
+            make_payload(
+                data_relatorio="2026-05-28",
+                justificativa_prestacao_contas_fora_prazo="   ",
+            )
+        )
         assert r["ok"] is False
         assert "justificativa_prestacao_contas_fora_prazo" in error_fields(r)
 
@@ -227,10 +299,12 @@ class TestAlteracoesCancelamentos:
         assert p["alteracoes_cancelamentos_noshow"] == []
 
     def test_lista_com_dicts_preservada(self):
-        p = make_payload(alteracoes_cancelamentos_noshow=[
-            {"descricao": "Voo cancelado"},
-            "string_invalida",
-        ])
+        p = make_payload(
+            alteracoes_cancelamentos_noshow=[
+                {"descricao": "Voo cancelado"},
+                "string_invalida",
+            ]
+        )
         r = validate_and_enrich_anexo2(p)
         assert r["ok"] is True
         assert len(p["alteracoes_cancelamentos_noshow"]) == 1

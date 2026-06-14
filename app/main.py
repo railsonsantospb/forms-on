@@ -1,4 +1,5 @@
 import json
+
 # import logging  # Replaced by structured logging
 import os
 import time
@@ -19,7 +20,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
 from app.settings import settings
-from app.middleware.security import SecurityHeadersMiddleware, RequestSizeLimitMiddleware
+from app.middleware.security import (
+    SecurityHeadersMiddleware,
+    RequestSizeLimitMiddleware,
+)
 from app.middleware.rate_limit import rate_limit
 from app.schemas.validator import validate_payload, ValidationError
 from app.services.anexo1_import import (
@@ -30,7 +34,10 @@ from app.services.anexo2_import import extract_prefill_for_anexo2
 from app.services.validate_anexo1 import validate_and_enrich_anexo1
 from app.services.validate_anexo2 import validate_and_enrich_anexo2
 from app.services.docx_render import render_docx_from_template
-from app.services.pdf_convert import convert_docx_to_pdf_async, LibreOfficeNotAvailableError
+from app.services.pdf_convert import (
+    convert_docx_to_pdf_async,
+    LibreOfficeNotAvailableError,
+)
 
 from app.core.logging import get_logger
 from app.middleware.trace import TraceIDMiddleware
@@ -64,7 +71,9 @@ WEB_DIR = Path("app/web")
 # Constantes de segurança
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
-UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+UUID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
+)
 MAX_FILENAME_LEN = 255
 
 # Magic bytes para validação de arquivos
@@ -92,7 +101,7 @@ def _sanitize_filename(filename: str) -> str:
     # Limita tamanho
     if len(sanitized) > MAX_FILENAME_LEN:
         name, ext = os.path.splitext(sanitized)
-        sanitized = name[:MAX_FILENAME_LEN - len(ext)] + ext
+        sanitized = name[: MAX_FILENAME_LEN - len(ext)] + ext
     return sanitized
 
 
@@ -102,7 +111,9 @@ def _validate_magic_bytes(content: bytes, suffix: str) -> None:
     if not magics:
         return
     if not any(content.startswith(m) for m in magics):
-        raise HTTPException(400, "Arquivo corrompido ou formato inválido (magic bytes mismatch).")
+        raise HTTPException(
+            400, "Arquivo corrompido ou formato inválido (magic bytes mismatch)."
+        )
 
 
 def _validate_file(file: UploadFile, content: bytes) -> None:
@@ -111,14 +122,18 @@ def _validate_file(file: UploadFile, content: bytes) -> None:
         raise HTTPException(400, "Nome do arquivo não fornecido.")
 
     if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(413, f"Arquivo muito grande. Limite: {MAX_FILE_SIZE // (1024*1024)}MB.")
+        raise HTTPException(
+            413, f"Arquivo muito grande. Limite: {MAX_FILE_SIZE // (1024 * 1024)}MB."
+        )
 
     if len(content) == 0:
         raise HTTPException(400, "Arquivo vazio.")
 
     suffix = Path(file.filename).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"Formato não suportado. Use: {', '.join(ALLOWED_EXTENSIONS)}.")
+        raise HTTPException(
+            400, f"Formato não suportado. Use: {', '.join(ALLOWED_EXTENSIONS)}."
+        )
 
     # Validação de magic bytes (file signature)
     _validate_magic_bytes(content, suffix)
@@ -192,7 +207,9 @@ def _require_draft_token(request: Request, draft: dict) -> None:
     provided = request.headers.get("x-draft-token", "")
     trace_id = getattr(request.state, "trace_id", "unknown")
     if not expected or not provided:
-        client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+        client_ip = request.headers.get("x-real-ip") or (
+            request.client.host if request.client else "unknown"
+        )
         logger.warning(
             "draft_token_missing",
             extra={
@@ -203,7 +220,9 @@ def _require_draft_token(request: Request, draft: dict) -> None:
         )
         raise HTTPException(403, "Token do rascunho obrigatório.")
     if not hmac.compare_digest(expected, _hash_draft_token(provided)):
-        client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+        client_ip = request.headers.get("x-real-ip") or (
+            request.client.host if request.client else "unknown"
+        )
         logger.warning(
             "draft_token_invalid",
             extra={
@@ -228,7 +247,9 @@ def _load_404_html() -> str:
 @app.exception_handler(ValidationError)
 async def validation_error_handler(request: Request, exc: ValidationError):
     trace_id = getattr(request.state, "trace_id", "unknown")
-    client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+    client_ip = request.headers.get("x-real-ip") or (
+        request.client.host if request.client else "unknown"
+    )
     logger.warning(
         "schema_validation_failed",
         extra={
@@ -240,7 +261,11 @@ async def validation_error_handler(request: Request, exc: ValidationError):
     )
     return JSONResponse(
         status_code=422,
-        content={"detail": "Dados inválidos.", "errors": exc.errors, "trace_id": trace_id},
+        content={
+            "detail": "Dados inválidos.",
+            "errors": exc.errors,
+            "trace_id": trace_id,
+        },
     )
 
 
@@ -384,7 +409,10 @@ async def prefill_anexo2_from_anexo1(request: Request, file: UploadFile = File(.
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     except Exception:
-        raise HTTPException(400, "Não foi possível extrair dados do Anexo I. Confirme se o arquivo está legível.")
+        raise HTTPException(
+            400,
+            "Não foi possível extrair dados do Anexo I. Confirme se o arquivo está legível.",
+        )
     finally:
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
@@ -414,7 +442,10 @@ async def prefill_anexo1_from_anexo1(request: Request, file: UploadFile = File(.
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     except Exception:
-        raise HTTPException(400, "Não foi possível extrair dados do Anexo I. Confirme se o arquivo está legível.")
+        raise HTTPException(
+            400,
+            "Não foi possível extrair dados do Anexo I. Confirme se o arquivo está legível.",
+        )
     finally:
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
@@ -444,7 +475,10 @@ async def prefill_anexo2_from_anexo2(request: Request, file: UploadFile = File(.
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     except Exception:
-        raise HTTPException(400, "Não foi possível extrair dados do Anexo II. Confirme se o arquivo está legível.")
+        raise HTTPException(
+            400,
+            "Não foi possível extrair dados do Anexo II. Confirme se o arquivo está legível.",
+        )
     finally:
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
@@ -468,7 +502,9 @@ def _add_security_headers_to_file_response(response: FileResponse) -> FileRespon
 
 @app.post("/api/anexo1/generate")
 @rate_limit(requests_per_minute=10)
-async def generate_anexo1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+async def generate_anexo1(
+    request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")
+):
     validate_payload("anexo1", payload)
     _ensure_data_dir()
 
@@ -478,7 +514,9 @@ async def generate_anexo1(request: Request, payload: dict, format: Literal["docx
 
     template = settings.templates_dir / "anexo1_template.docx"
     if not template.exists():
-        raise HTTPException(500, "Template anexo1_template.docx não encontrado em app/templates.")
+        raise HTTPException(
+            500, "Template anexo1_template.docx não encontrado em app/templates."
+        )
 
     with NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
         out_docx = Path(tmp_docx.name)
@@ -520,7 +558,9 @@ async def generate_anexo1(request: Request, payload: dict, format: Literal["docx
 
 @app.post("/api/anexo2/generate")
 @rate_limit(requests_per_minute=10)
-async def generate_anexo2(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+async def generate_anexo2(
+    request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")
+):
     validate_payload("anexo2", payload)
     _ensure_data_dir()
 
@@ -530,7 +570,9 @@ async def generate_anexo2(request: Request, payload: dict, format: Literal["docx
 
     template = settings.templates_dir / "anexo2_template.docx"
     if not template.exists():
-        raise HTTPException(500, "Template anexo2_template.docx não encontrado em app/templates.")
+        raise HTTPException(
+            500, "Template anexo2_template.docx não encontrado em app/templates."
+        )
 
     with NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
         out_docx = Path(tmp_docx.name)
@@ -574,6 +616,7 @@ async def generate_anexo2(request: Request, payload: dict, format: Literal["docx
 def review_page():
     return _load_html("review.html")
 
+
 # ===== Bloqueia rotas de documentação da API =====
 
 
@@ -594,8 +637,23 @@ def _is_safe_path(base: Path, target: Path) -> bool:
 
 
 _BLOCKED_PATH_PREFIXES = {
-    "etc", "var", "sys", "proc", "dev", "root", "home", "usr", "bin",
-    "sbin", "lib", "lib64", "tmp", "boot", "opt", "mnt", "media",
+    "etc",
+    "var",
+    "sys",
+    "proc",
+    "dev",
+    "root",
+    "home",
+    "usr",
+    "bin",
+    "sbin",
+    "lib",
+    "lib64",
+    "tmp",
+    "boot",
+    "opt",
+    "mnt",
+    "media",
 }
 
 
@@ -610,7 +668,9 @@ def _looks_like_system_probe(full_path: str) -> bool:
     return first_segment in _BLOCKED_PATH_PREFIXES
 
 
-def _add_security_headers_to_response(response: Union[FileResponse, HTMLResponse]) -> Union[FileResponse, HTMLResponse]:
+def _add_security_headers_to_response(
+    response: Union[FileResponse, HTMLResponse],
+) -> Union[FileResponse, HTMLResponse]:
     """Adiciona headers de segurança em responses estáticas."""
     if not response.headers:
         response.headers = {}
@@ -623,6 +683,7 @@ def _add_security_headers_to_response(response: Union[FileResponse, HTMLResponse
 # ===== API v1 Routes (aliases for backward compatibility) =====
 # These provide the same functionality under /api/v1/ prefix
 # All legacy /api/ routes remain functional
+
 
 @api_v1_router.post("/drafts")
 @rate_limit(requests_per_minute=20)
@@ -667,14 +728,18 @@ async def preview_anexo2_v1(request: Request, payload: dict):
 
 @api_v1_router.post("/anexo1/generate")
 @rate_limit(requests_per_minute=10)
-async def generate_anexo1_v1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+async def generate_anexo1_v1(
+    request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")
+):
     """Generate Anexo I document (v1 API)."""
     return await generate_anexo1(request, payload, format)
 
 
 @api_v1_router.post("/anexo2/generate")
 @rate_limit(requests_per_minute=10)
-async def generate_anexo2_v1(request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")):
+async def generate_anexo2_v1(
+    request: Request, payload: dict, format: Literal["docx", "pdf"] = Query("docx")
+):
     """Generate Anexo II document (v1 API)."""
     return await generate_anexo2(request, payload, format)
 
@@ -707,6 +772,7 @@ app.include_router(api_v1_router, prefix="/api")
 # ===== Catch-all para SPA React ou fallback 404 =====
 # Deve ser a ÚLTIMA rota.
 if HAS_REACT_BUILD:
+
     @app.get("/{full_path:path}")
     def serve_react(full_path: str, request: Request):
         # Sanitiza path para evitar path traversal (../etc/passwd)
@@ -724,11 +790,17 @@ if HAS_REACT_BUILD:
 
         safe_path = os.path.normpath(full_path).lstrip("/")
         file_path = FRONTEND_DIST / safe_path
-        if file_path.exists() and file_path.is_file() and _is_safe_path(FRONTEND_DIST, file_path):
+        if (
+            file_path.exists()
+            and file_path.is_file()
+            and _is_safe_path(FRONTEND_DIST, file_path)
+        ):
             response = FileResponse(str(file_path))
             return _add_security_headers_to_response(response)
         return _add_security_headers_to_response(
-            HTMLResponse(content=(FRONTEND_DIST / "index.html").read_text(encoding="utf-8"))
+            HTMLResponse(
+                content=(FRONTEND_DIST / "index.html").read_text(encoding="utf-8")
+            )
         )
 else:
     # Fallback vanilla: serve página 404 para rotas não encontradas

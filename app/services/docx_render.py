@@ -61,9 +61,13 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
             row = table.rows[i]
 
             # Verificar formato novo Anexo I (2 rows: origem/destino/data + hora)
-            if _row_has_token(row, "{{ida_origem}}") and _row_has_token(row, "{{ida_data}}"):
+            if _row_has_token(row, "{{ida_origem}}") and _row_has_token(
+                row, "{{ida_data}}"
+            ):
                 row_hora = table.rows[i + 1] if (i + 1) < len(table.rows) else None
-                has_hora_row = row_hora is not None and _row_has_token(row_hora, "{{ida_hora}}")
+                has_hora_row = row_hora is not None and _row_has_token(
+                    row_hora, "{{ida_hora}}"
+                )
                 tmpl_a = deepcopy(row._tr)
                 tmpl_b = deepcopy(row_hora._tr) if has_hora_row else None
 
@@ -83,15 +87,21 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
                             _replace_in_row(_Row(new_b, table), item)
                             prev_tr = new_b
                 else:
-                    _replace_in_row(row, {"ida_origem": "", "ida_destino": "", "ida_data": ""})
+                    _replace_in_row(
+                        row, {"ida_origem": "", "ida_destino": "", "ida_data": ""}
+                    )
                     if has_hora_row:
                         _replace_in_row(row_hora, {"ida_hora": ""})
                 i += 2 if has_hora_row else 1
                 continue
 
-            if _row_has_token(row, "{{retorno_origem}}") and _row_has_token(row, "{{retorno_data}}"):
+            if _row_has_token(row, "{{retorno_origem}}") and _row_has_token(
+                row, "{{retorno_data}}"
+            ):
                 row_hora = table.rows[i + 1] if (i + 1) < len(table.rows) else None
-                has_hora_row = row_hora is not None and _row_has_token(row_hora, "{{retorno_hora}}")
+                has_hora_row = row_hora is not None and _row_has_token(
+                    row_hora, "{{retorno_hora}}"
+                )
                 tmpl_a = deepcopy(row._tr)
                 tmpl_b = deepcopy(row_hora._tr) if has_hora_row else None
 
@@ -111,7 +121,14 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
                             _replace_in_row(_Row(new_b, table), item)
                             prev_tr = new_b
                 else:
-                    _replace_in_row(row, {"retorno_origem": "", "retorno_destino": "", "retorno_data": ""})
+                    _replace_in_row(
+                        row,
+                        {
+                            "retorno_origem": "",
+                            "retorno_destino": "",
+                            "retorno_data": "",
+                        },
+                    )
                     if has_hora_row:
                         _replace_in_row(row_hora, {"retorno_hora": ""})
                 i += 2 if has_hora_row else 1
@@ -120,7 +137,9 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
             # Formato antigo (1 row ou 2 rows com data_hora)
             if _row_has_token(row, "{{ida_origem}}"):
                 row_data = table.rows[i + 1] if (i + 1) < len(table.rows) else None
-                has_data_row = row_data is not None and _row_has_token(row_data, "{{ida_data_hora}}")
+                has_data_row = row_data is not None and _row_has_token(
+                    row_data, "{{ida_data_hora}}"
+                )
                 tmpl_a = deepcopy(row._tr)
                 tmpl_b = deepcopy(row_data._tr) if has_data_row else None
                 if ida_rows:
@@ -139,15 +158,22 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
                             _replace_in_row(_Row(new_b, table), item)
                             prev_tr = new_b
                 else:
-                    _replace_in_row(row, {"ida_origem": "", "ida_destino": "", "ida_data_hora": ""})
+                    _replace_in_row(
+                        row, {"ida_origem": "", "ida_destino": "", "ida_data_hora": ""}
+                    )
                     if has_data_row:
-                        _replace_in_row(row_data, {"ida_origem": "", "ida_destino": "", "ida_data_hora": ""})
+                        _replace_in_row(
+                            row_data,
+                            {"ida_origem": "", "ida_destino": "", "ida_data_hora": ""},
+                        )
                 i += 2 if has_data_row else 1
                 continue
 
             if _row_has_token(row, "{{retorno_origem}}"):
                 row_data = table.rows[i + 1] if (i + 1) < len(table.rows) else None
-                has_data_row = row_data is not None and _row_has_token(row_data, "{{retorno_data_hora}}")
+                has_data_row = row_data is not None and _row_has_token(
+                    row_data, "{{retorno_data_hora}}"
+                )
                 tmpl_a = deepcopy(row._tr)
                 tmpl_b = deepcopy(row_data._tr) if has_data_row else None
                 if ret_rows:
@@ -166,10 +192,22 @@ def _expand_trecho_rows(doc: Document, rows: Dict[str, list]) -> None:
                             _replace_in_row(_Row(new_b, table), item)
                             prev_tr = new_b
                 else:
-                    _replace_in_row(row, {"retorno_origem": "", "retorno_destino": "", "retorno_data_hora": ""})
+                    _replace_in_row(
+                        row,
+                        {
+                            "retorno_origem": "",
+                            "retorno_destino": "",
+                            "retorno_data_hora": "",
+                        },
+                    )
                     if has_data_row:
                         _replace_in_row(
-                            row_data, {"retorno_origem": "", "retorno_destino": "", "retorno_data_hora": ""}
+                            row_data,
+                            {
+                                "retorno_origem": "",
+                                "retorno_destino": "",
+                                "retorno_data_hora": "",
+                            },
                         )
                 i += 2 if has_data_row else 1
                 continue

@@ -2,6 +2,7 @@
 Testes para app/services/validate_anexo1.py
 Cobre: tipo_solicitacao, datas, trechos, missão, cidades, prazo, fim de semana, justificativas.
 """
+
 from __future__ import annotations
 
 import sys
@@ -17,7 +18,10 @@ MOCK_PLACEHOLDERS = {"campo": "valor"}
 MOCK_ROWS = {"ida": [], "retorno": []}
 
 _patches = [
-    patch("app.services.validate_anexo1.build_placeholders_anexo1", return_value=MOCK_PLACEHOLDERS),
+    patch(
+        "app.services.validate_anexo1.build_placeholders_anexo1",
+        return_value=MOCK_PLACEHOLDERS,
+    ),
     patch("app.services.validate_anexo1.build_rows_anexo1", return_value=MOCK_ROWS),
 ]
 
@@ -47,8 +51,20 @@ BASE_PAYLOAD = {
     },
     "motivo_viagem": "Participação em congresso internacional de pesquisa científica",
     "trechos": {
-        "ida": [{"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"}],
-        "retorno": [{"origem": "Recife", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"}],
+        "ida": [
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            }
+        ],
+        "retorno": [
+            {
+                "origem": "Recife",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            }
+        ],
     },
     "missao": {
         "inicio_data_hora": "2026-05-20T09:00",
@@ -75,6 +91,7 @@ def error_fields(result):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class TestTipoSolicitacao:
     def test_valido_diarias(self):
         r = validate_and_enrich_anexo1(make_payload())
@@ -86,7 +103,9 @@ class TestTipoSolicitacao:
         assert r["ok"] is True
 
     def test_valido_diarias_e_passagens(self):
-        p = make_payload(tipo_solicitacao="diarias_e_passagens", data_solicitacao="2026-04-01")
+        p = make_payload(
+            tipo_solicitacao="diarias_e_passagens", data_solicitacao="2026-04-01"
+        )
         r = validate_and_enrich_anexo1(p)
         assert r["ok"] is True
 
@@ -153,18 +172,34 @@ class TestTrechos:
 
     def test_trecho_normaliza_dict_para_lista(self):
         p = make_payload()
-        p["trechos"]["ida"] = {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"}
+        p["trechos"]["ida"] = {
+            "origem": "João Pessoa",
+            "destino": "Recife",
+            "data_hora": "2026-05-20T08:00",
+        }
         r = validate_and_enrich_anexo1(p)
         assert r["ok"] is True
 
     def test_multiplos_trechos_encadeados_corretos(self):
         p = make_payload()
         p["trechos"]["ida"] = [
-            {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"},
-            {"origem": "Recife", "destino": "Fortaleza", "data_hora": "2026-05-20T14:00"},
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            },
+            {
+                "origem": "Recife",
+                "destino": "Fortaleza",
+                "data_hora": "2026-05-20T14:00",
+            },
         ]
         p["trechos"]["retorno"] = [
-            {"origem": "Fortaleza", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"},
+            {
+                "origem": "Fortaleza",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            },
         ]
         p["missao"]["inicio_data_hora"] = "2026-05-20T09:00"
         p["missao"]["termino_data_hora"] = "2026-05-22T17:00"
@@ -174,11 +209,23 @@ class TestTrechos:
     def test_multiplos_trechos_encadeamento_quebrado(self):
         p = make_payload()
         p["trechos"]["ida"] = [
-            {"origem": "João Pessoa", "destino": "Recife", "data_hora": "2026-05-20T08:00"},
-            {"origem": "Natal", "destino": "Fortaleza", "data_hora": "2026-05-20T14:00"},  # origem errada
+            {
+                "origem": "João Pessoa",
+                "destino": "Recife",
+                "data_hora": "2026-05-20T08:00",
+            },
+            {
+                "origem": "Natal",
+                "destino": "Fortaleza",
+                "data_hora": "2026-05-20T14:00",
+            },  # origem errada
         ]
         p["trechos"]["retorno"] = [
-            {"origem": "Fortaleza", "destino": "João Pessoa", "data_hora": "2026-05-22T18:00"},
+            {
+                "origem": "Fortaleza",
+                "destino": "João Pessoa",
+                "data_hora": "2026-05-22T18:00",
+            },
         ]
         p["missao"]["inicio_data_hora"] = "2026-05-20T09:00"
         p["missao"]["termino_data_hora"] = "2026-05-22T17:00"
@@ -197,7 +244,9 @@ class TestTrechos:
 class TestMesmaCidade:
     def test_origem_igual_destino_ida(self):
         p = make_payload()
-        p["trechos"]["ida"][0]["destino"] = "joão pessoa"  # mesma cidade (case insensitive)
+        p["trechos"]["ida"][0]["destino"] = (
+            "joão pessoa"  # mesma cidade (case insensitive)
+        )
         r = validate_and_enrich_anexo1(p)
         assert r["ok"] is False
         assert "trechos.ida.0.destino" in error_fields(r)
@@ -266,7 +315,9 @@ class TestFlagsEPrazo:
     def test_fora_do_prazo_com_justificativa_ok(self):
         p = make_payload(
             data_solicitacao="2026-05-12",
-            justificativas={"justificativa_fora_prazo": "Urgência administrativa devidamente documentada."},
+            justificativas={
+                "justificativa_fora_prazo": "Urgência administrativa devidamente documentada."
+            },
         )
         r = validate_and_enrich_anexo1(p)
         assert r["ok"] is True
@@ -304,7 +355,9 @@ class TestFimDeSemana:
         r = validate_and_enrich_anexo1(p)
         assert r["ok"] is False
         assert r["flags"]["envolve_fds_feriado_ou_dia_anterior"] is True
-        assert "justificativas.justificativa_fds_feriado_dia_anterior" in error_fields(r)
+        assert "justificativas.justificativa_fds_feriado_dia_anterior" in error_fields(
+            r
+        )
 
     def test_ida_domingo_exige_justificativa(self):
         # 2026-05-24 = domingo
@@ -321,7 +374,9 @@ class TestFimDeSemana:
         # ida=23/05 (sáb) → limite prazo=13/05; data_solic=13/05 → dentro do prazo
         p = make_payload(
             data_solicitacao="2026-05-13",
-            justificativas={"justificativa_fds_feriado_dia_anterior": "Evento realizado no fim de semana."},
+            justificativas={
+                "justificativa_fds_feriado_dia_anterior": "Evento realizado no fim de semana."
+            },
         )
         p["trechos"]["ida"][0]["data_hora"] = "2026-05-23T08:00"
         p["trechos"]["retorno"][0]["data_hora"] = "2026-05-25T18:00"
@@ -348,7 +403,9 @@ class TestFimDeSemana:
         r = validate_and_enrich_anexo1(p)
         assert r["flags"]["envolve_fds_feriado_ou_dia_anterior"] is True
         assert r["ok"] is False
-        assert "justificativas.justificativa_fds_feriado_dia_anterior" in error_fields(r)
+        assert "justificativas.justificativa_fds_feriado_dia_anterior" in error_fields(
+            r
+        )
 
 
 class TestRetornoOk:

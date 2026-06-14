@@ -20,10 +20,16 @@ from app.services.anexo1_import import (
 
 def parse_orgao_exercicio(text: str) -> Dict[str, Optional[str]]:
     """Parse Órgão de Exercício checkboxes from Anexo II."""
-    block = find_block(r"ÓRGÃO DE EXERCÍCIO:\s*", r"IDENTIFICAÇÃO DO AFASTAMENTO", text) or ""
+    block = (
+        find_block(r"ÓRGÃO DE EXERCÍCIO:\s*", r"IDENTIFICAÇÃO DO AFASTAMENTO", text)
+        or ""
+    )
     if not block:
         # Fallback: looser match
-        block = find_block(r"Órgão de Exercício\s*", r"IDENTIFICAÇÃO DO AFASTAMENTO", text) or ""
+        block = (
+            find_block(r"Órgão de Exercício\s*", r"IDENTIFICAÇÃO DO AFASTAMENTO", text)
+            or ""
+        )
 
     if _is_checked(block, r"CCHSA\b"):
         return {"tipo": "cchsa"}
@@ -54,16 +60,29 @@ def parse_orgao_exercicio(text: str) -> Dict[str, Optional[str]]:
 
 
 def parse_identificacao_proposto(text: str) -> Dict[str, Any]:
-    block = find_block(r"IDENTIFICAÇÃO DO PROPOSTO:\s*", r"IDENTIFICAÇÃO DO AFASTAMENTO", text) or ""
+    block = (
+        find_block(
+            r"IDENTIFICAÇÃO DO PROPOSTO:\s*", r"IDENTIFICAÇÃO DO AFASTAMENTO", text
+        )
+        or ""
+    )
     if not block:
         return {}
 
     nome = find_with_stop(r"Nome", block)
     siape = find_with_stop(r"SIAPE", block) or find_one(r"SIAPE:\s*(\d+)", block)
-    cpf = find_with_stop(r"CPF", block) or find_one(r"CPF:\s*([0-9\.\-]{11,14}|\d{11})", block)
-    cargo = find_with_stop(r"Cargo/Função|Cargo", block) or find_one(r"Cargo[/\s]*Função:\s*(.+)", block)
-    telefone = find_with_stop(r"Telefone", block) or find_one(r"Telefone:\s*([\d\(\)\-\s]+)", block)
-    email = find_with_stop(r"E[-]?mail|Email", block) or find_one(r"E[-]?mail:\s*([^\s]+@[^\s]+)", block)
+    cpf = find_with_stop(r"CPF", block) or find_one(
+        r"CPF:\s*([0-9\.\-]{11,14}|\d{11})", block
+    )
+    cargo = find_with_stop(r"Cargo/Função|Cargo", block) or find_one(
+        r"Cargo[/\s]*Função:\s*(.+)", block
+    )
+    telefone = find_with_stop(r"Telefone", block) or find_one(
+        r"Telefone:\s*([\d\(\)\-\s]+)", block
+    )
+    email = find_with_stop(r"E[-]?mail|Email", block) or find_one(
+        r"E[-]?mail:\s*([^\s]+@[^\s]+)", block
+    )
     orgao = parse_orgao_exercicio(text)
 
     return {
@@ -79,13 +98,11 @@ def parse_identificacao_proposto(text: str) -> Dict[str, Any]:
 
 def parse_afastamento_trecho(block: str) -> Dict[str, Optional[str]]:
     """Parse a single trecho (ida or retorno) from the afastamento block."""
-    origem = (
-        find_with_stop(r"Cidade de origem", block)
-        or find_one(r"Cidade de origem:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
+    origem = find_with_stop(r"Cidade de origem", block) or find_one(
+        r"Cidade de origem:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL
     )
-    destino = (
-        find_with_stop(r"Cidade de Destino", block)
-        or find_one(r"Cidade de Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
+    destino = find_with_stop(r"Cidade de Destino", block) or find_one(
+        r"Cidade de Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL
     )
 
     def _clean(val: Optional[str]) -> str:
@@ -129,19 +146,33 @@ def parse_afastamento_trecho(block: str) -> Dict[str, Optional[str]]:
 
 
 def parse_afastamento(text: str) -> Dict[str, Any]:
-    block = find_block(r"IDENTIFICAÇÃO DO AFASTAMENTO:\s*", r"ALTERAÇÕES/\s*CANCELAMENTOS", text) or ""
+    block = (
+        find_block(
+            r"IDENTIFICAÇÃO DO AFASTAMENTO:\s*", r"ALTERAÇÕES/\s*CANCELAMENTOS", text
+        )
+        or ""
+    )
     if not block:
-        block = find_block(r"IDENTIFICAÇÃO DO AFASTAMENTO:\s*", r"DESCRIÇÃO DA VIAGEM", text) or ""
+        block = (
+            find_block(
+                r"IDENTIFICAÇÃO DO AFASTAMENTO:\s*", r"DESCRIÇÃO DA VIAGEM", text
+            )
+            or ""
+        )
     if not block:
         return {"ida": [], "retorno": []}
 
     # Split into IDA and RETORNO sub-blocks
     ida_block = find_block(r"IDA:\s*", r"RETORNO:", block) or ""
-    ret_block = find_block(r"RETORNO:\s*", r"(?:ALTERAÇÕES|DESCRIÇÃO DA VIAGEM)", block) or ""
+    ret_block = (
+        find_block(r"RETORNO:\s*", r"(?:ALTERAÇÕES|DESCRIÇÃO DA VIAGEM)", block) or ""
+    )
 
     # Fallback: if find_block fails, try manual split
     if not ida_block:
-        m = re.search(r"IDA:\s*(.+?)\s*RETORNO:", block, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(
+            r"IDA:\s*(.+?)\s*RETORNO:", block, flags=re.IGNORECASE | re.DOTALL
+        )
         ida_block = m.group(1).strip() if m else ""
     if not ret_block:
         m = re.search(
@@ -155,13 +186,22 @@ def parse_afastamento(text: str) -> Dict[str, Any]:
     ret = parse_afastamento_trecho(ret_block)
 
     return {
-        "ida": [ida] if ida.get("origem") or ida.get("destino") or ida.get("data_hora") else [],
-        "retorno": [ret] if ret.get("origem") or ret.get("destino") or ret.get("data_hora") else [],
+        "ida": [ida]
+        if ida.get("origem") or ida.get("destino") or ida.get("data_hora")
+        else [],
+        "retorno": [ret]
+        if ret.get("origem") or ret.get("destino") or ret.get("data_hora")
+        else [],
     }
 
 
 def parse_atividades(text: str) -> List[Dict[str, str]]:
-    block = find_block(r"DESCRIÇÃO DA VIAGEM:\s*", r"JUSTIFICATIVA PARA PRESTAÇÃO DE CONTAS", text) or ""
+    block = (
+        find_block(
+            r"DESCRIÇÃO DA VIAGEM:\s*", r"JUSTIFICATIVA PARA PRESTAÇÃO DE CONTAS", text
+        )
+        or ""
+    )
     if not block:
         return []
 
@@ -187,47 +227,58 @@ def parse_atividades(text: str) -> List[Dict[str, str]]:
         # The parts after the date part are: horario, cidade, atividades...
         # But sometimes the date is inside a longer text like "Atividades...: 15/08/2025"
         # Let's normalize: take the part with the date as the data, and subsequent parts as other columns
-        after = parts[date_idx + 1:]
+        after = parts[date_idx + 1 :]
         # Clean the data part (remove label text if any)
         data_clean = re.sub(r".*?(\d{2}/\d{2}/\d{4})", r"\1", parts[date_idx])
         if len(after) >= 3:
-            atividades.append({
-                "data": data_clean,
-                "horario": after[0],
-                "cidade": after[1],
-                "atividades": " | ".join(after[2:]),
-            })
+            atividades.append(
+                {
+                    "data": data_clean,
+                    "horario": after[0],
+                    "cidade": after[1],
+                    "atividades": " | ".join(after[2:]),
+                }
+            )
         elif len(after) == 2:
-            atividades.append({
-                "data": data_clean,
-                "horario": after[0],
-                "cidade": after[1],
-                "atividades": "",
-            })
+            atividades.append(
+                {
+                    "data": data_clean,
+                    "horario": after[0],
+                    "cidade": after[1],
+                    "atividades": "",
+                }
+            )
         elif len(after) == 1:
-            atividades.append({
-                "data": data_clean,
-                "horario": after[0],
-                "cidade": "",
-                "atividades": "",
-            })
+            atividades.append(
+                {
+                    "data": data_clean,
+                    "horario": after[0],
+                    "cidade": "",
+                    "atividades": "",
+                }
+            )
         else:
-            atividades.append({
-                "data": data_clean,
-                "horario": "",
-                "cidade": "",
-                "atividades": "",
-            })
+            atividades.append(
+                {
+                    "data": data_clean,
+                    "horario": "",
+                    "cidade": "",
+                    "atividades": "",
+                }
+            )
 
     return atividades
 
 
 def parse_alteracoes(text: str) -> List[Dict[str, str]]:
-    block = find_block(
-        r"ALTERAÇÕES/\s*CANCELAMENTOS/\s*NO SHOW\s*",
-        r"DESCRIÇÃO DA VIAGEM",
-        text,
-    ) or ""
+    block = (
+        find_block(
+            r"ALTERAÇÕES/\s*CANCELAMENTOS/\s*NO SHOW\s*",
+            r"DESCRIÇÃO DA VIAGEM",
+            text,
+        )
+        or ""
+    )
     if not block:
         return []
 
@@ -236,7 +287,11 @@ def parse_alteracoes(text: str) -> List[Dict[str, str]]:
 
     # Skip header/description lines
     for ln in lines:
-        if re.search(r"alterações realizadas|cancelamento de trechos|não comparecimento", ln, re.IGNORECASE):
+        if re.search(
+            r"alterações realizadas|cancelamento de trechos|não comparecimento",
+            ln,
+            re.IGNORECASE,
+        ):
             continue
         if "|" in ln:
             parts = [p.strip() for p in ln.split("|")]
@@ -245,8 +300,14 @@ def parse_alteracoes(text: str) -> List[Dict[str, str]]:
                 descricao = " | ".join(parts[1:])
                 if tipo and descricao:
                     alteracoes.append({"tipo": tipo, "descricao": descricao})
-        elif re.match(r"^(Alteração|Cancelamento|No Show|Outro)\s*[-:]\s*(.+)", ln, re.IGNORECASE):
-            m = re.match(r"^(Alteração|Cancelamento|No Show|Outro)\s*[-:]\s*(.+)", ln, re.IGNORECASE)
+        elif re.match(
+            r"^(Alteração|Cancelamento|No Show|Outro)\s*[-:]\s*(.+)", ln, re.IGNORECASE
+        ):
+            m = re.match(
+                r"^(Alteração|Cancelamento|No Show|Outro)\s*[-:]\s*(.+)",
+                ln,
+                re.IGNORECASE,
+            )
             if m:
                 alteracoes.append({"tipo": m.group(1), "descricao": m.group(2)})
 
@@ -341,10 +402,14 @@ def build_anexo2_warnings(prefill: Dict[str, Any]) -> List[str]:
         warnings.append("Cidade de origem do retorno não identificada; revise.")
 
     if not ida_obj.get("data_hora") or not ret_obj.get("data_hora"):
-        warnings.append("Datas/horários do afastamento não foram lidos; informe manualmente.")
+        warnings.append(
+            "Datas/horários do afastamento não foram lidos; informe manualmente."
+        )
 
     if not prefill.get("atividades_tabela"):
-        warnings.append("Tabela de atividades não foi identificada; preencha manualmente.")
+        warnings.append(
+            "Tabela de atividades não foi identificada; preencha manualmente."
+        )
 
     return warnings
 

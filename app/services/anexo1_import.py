@@ -40,10 +40,34 @@ def _line_looks_like_label_start(line: str) -> bool:
         return False
     # Known label words (case-insensitive)
     label_starters = [
-        "nome", "cargo", "função", "cpf", "rg", "passaporte", "data", "siape",
-        "mãe", "endereço", "telefone", "email", "e-mail", "banco", "agência",
-        "conta", "local", "destino", "origem", "dados", "descrição", "débito",
-        "missão", "identificação", "lotação", "órgão", "lotação/órgão", "nº",
+        "nome",
+        "cargo",
+        "função",
+        "cpf",
+        "rg",
+        "passaporte",
+        "data",
+        "siape",
+        "mãe",
+        "endereço",
+        "telefone",
+        "email",
+        "e-mail",
+        "banco",
+        "agência",
+        "conta",
+        "local",
+        "destino",
+        "origem",
+        "dados",
+        "descrição",
+        "débito",
+        "missão",
+        "identificação",
+        "lotação",
+        "órgão",
+        "lotação/órgão",
+        "nº",
     ]
     first_word = stripped.split()[0].lower().rstrip(":")
     return first_word in label_starters
@@ -114,9 +138,26 @@ def _smart_merge_lines(text: str) -> str:
             # 2. Current line ends with a preposition/article that suggests continuation
             #    e.g. "DESCRIÇÃO DO MOTIVO DA" + "VIAGEM:"
             last_word = current.rstrip(":").rsplit(None, 1)[-1].lower()
-            if last_word in {"da", "do", "de", "em", "no", "na", "dos", "das", "a", "o", "e"}:
+            if last_word in {
+                "da",
+                "do",
+                "de",
+                "em",
+                "no",
+                "na",
+                "dos",
+                "das",
+                "a",
+                "o",
+                "e",
+            }:
                 # Only merge if next line starts a likely label continuation
-                if nxt and (nxt[0].isupper() or nxt[0].isdigit() or nxt.startswith("(") or nxt.startswith("VIAGEM")):
+                if nxt and (
+                    nxt[0].isupper()
+                    or nxt[0].isdigit()
+                    or nxt.startswith("(")
+                    or nxt.startswith("VIAGEM")
+                ):
                     current = f"{current} {nxt}"
                     i += 1
                     continue
@@ -125,7 +166,9 @@ def _smart_merge_lines(text: str) -> str:
             combined = f"{current} {nxt}"
             for label in _KNOWN_LABELS:
                 # Allow flexible matching (case-insensitive, with optional spaces around /)
-                label_pattern = re.escape(label).replace(r"\ ", r"\s+").replace(r"/", r"[/\s]*")
+                label_pattern = (
+                    re.escape(label).replace(r"\ ", r"\s+").replace(r"/", r"[/\s]*")
+                )
                 if re.search(label_pattern, combined, re.IGNORECASE):
                     # Check if current alone already contains the full label
                     if not re.search(label_pattern, current, re.IGNORECASE):
@@ -172,7 +215,9 @@ def find_with_stop(label_regex: str, text: str) -> Optional[str]:
     Capture value after label until the next known label (or end).
     Helps when DOCX coloca vários campos na mesma linha.
     """
-    pattern = rf"(?:{label_regex})(?:\s*\([^)]*\))?\s*:\s*(.+?)\s*(?={STOP_LABELS_PATTERN}|$)"
+    pattern = (
+        rf"(?:{label_regex})(?:\s*\([^)]*\))?\s*:\s*(.+?)\s*(?={STOP_LABELS_PATTERN}|$)"
+    )
     m = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
     if not m:
         return None
@@ -270,7 +315,11 @@ def parse_vinculo(text: str) -> Dict[str, Any]:
         # Fallback: search in whole text but scoped
         if "Auxílio Transporte" in text:
             # Find SIM/NAO specifically after Auxílio Transporte and before Alimentação
-            scoped = re.search(r"Auxílio Transporte(.+?)Auxílio Alimentação", text, flags=re.IGNORECASE | re.DOTALL)
+            scoped = re.search(
+                r"Auxílio Transporte(.+?)Auxílio Alimentação",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
             scope = scoped.group(1) if scoped else text
             sim = bool(re.search(r"\(\s*[xX☑]\s*\)\s*SIM", scope, re.IGNORECASE))
             nao = bool(re.search(r"\(\s*[xX☑]\s*\)\s*N[ÃA]O", scope, re.IGNORECASE))
@@ -279,9 +328,18 @@ def parse_vinculo(text: str) -> Dict[str, Any]:
                 val_match = re.search(r"VALOR:\s*(\S+)", scope, re.IGNORECASE)
                 if val_match:
                     val = val_match.group(1).strip()
-                    if val.lower() in ("recebe", "auxílio", "alimentação", "sim", "não"):
+                    if val.lower() in (
+                        "recebe",
+                        "auxílio",
+                        "alimentação",
+                        "sim",
+                        "não",
+                    ):
                         val = None
-            result["auxilio_transporte"] = {"recebe": sim if sim else not nao, "valor": val}
+            result["auxilio_transporte"] = {
+                "recebe": sim if sim else not nao,
+                "valor": val,
+            }
 
     # Auxílio alimentação
     alim_block_match = re.search(
@@ -300,10 +358,17 @@ def parse_vinculo(text: str) -> Dict[str, Any]:
                 val = val_match.group(1).strip()
                 if val.lower() in ("recebe", "auxílio", "alimentação", "sim", "não"):
                     val = None
-        result["auxilio_alimentacao"] = {"recebe": sim if sim else not nao, "valor": val}
+        result["auxilio_alimentacao"] = {
+            "recebe": sim if sim else not nao,
+            "valor": val,
+        }
     else:
         if "Auxílio Alimentação" in text:
-            scoped = re.search(r"Auxílio Alimentação(.+?)Dados Bancários", text, flags=re.IGNORECASE | re.DOTALL)
+            scoped = re.search(
+                r"Auxílio Alimentação(.+?)Dados Bancários",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
             scope = scoped.group(1) if scoped else text
             sim = bool(re.search(r"\(\s*[xX☑]\s*\)\s*SIM", scope, re.IGNORECASE))
             nao = bool(re.search(r"\(\s*[xX☑]\s*\)\s*N[ÃA]O", scope, re.IGNORECASE))
@@ -312,15 +377,28 @@ def parse_vinculo(text: str) -> Dict[str, Any]:
                 val_match = re.search(r"VALOR:\s*(\S+)", scope, re.IGNORECASE)
                 if val_match:
                     val = val_match.group(1).strip()
-                    if val.lower() in ("recebe", "auxílio", "alimentação", "sim", "não"):
+                    if val.lower() in (
+                        "recebe",
+                        "auxílio",
+                        "alimentação",
+                        "sim",
+                        "não",
+                    ):
                         val = None
-            result["auxilio_alimentacao"] = {"recebe": sim if sim else not nao, "valor": val}
+            result["auxilio_alimentacao"] = {
+                "recebe": sim if sim else not nao,
+                "valor": val,
+            }
 
     return result
 
 
 def parse_transporte(text: str) -> Dict[str, Any]:
-    result: Dict[str, Any] = {"meios": [], "distancia_km": None, "termo_veiculo_proprio_ciente": False}
+    result: Dict[str, Any] = {
+        "meios": [],
+        "distancia_km": None,
+        "termo_veiculo_proprio_ciente": False,
+    }
 
     meios_map = [
         ("veiculo_oficial", r"Veículo\s+Oficial"),
@@ -338,7 +416,11 @@ def parse_transporte(text: str) -> Dict[str, Any]:
             result["meios"].append(meio)
 
     # distancia_km
-    km = find_one(r"dist[âa]ncia\s+percorrida\s*\(em\s*km\)\s*[:\-]?\s*(\d+[\d,.]*)", block, flags=re.IGNORECASE)
+    km = find_one(
+        r"dist[âa]ncia\s+percorrida\s*\(em\s*km\)\s*[:\-]?\s*(\d+[\d,.]*)",
+        block,
+        flags=re.IGNORECASE,
+    )
     if km:
         result["distancia_km"] = km.replace(",", ".")
 
@@ -399,9 +481,11 @@ def parse_justificativas(text: str) -> Dict[str, Optional[str]]:
                 for stop_pat in label_patterns.values():
                     if re.search(stop_pat, val, flags=re.IGNORECASE | re.DOTALL):
                         # Truncate at the stop label
-                        m_stop = re.search(stop_pat, val, flags=re.IGNORECASE | re.DOTALL)
+                        m_stop = re.search(
+                            stop_pat, val, flags=re.IGNORECASE | re.DOTALL
+                        )
                         if m_stop:
-                            val = val[:m_stop.start()].strip()
+                            val = val[: m_stop.start()].strip()
                 if val:
                     if current_key not in result:
                         result[current_key] = val
@@ -419,7 +503,11 @@ def parse_justificativas(text: str) -> Dict[str, Optional[str]]:
     # Clean up leaked sub-label text when no real value was filled
     urgente = result.get("just_viagem_urgente")
     if urgente:
-        urgente = re.split(r"\s*\(menos de 20 dias de antecedência\)\s*:?\s*$", urgente, flags=re.IGNORECASE)[0].strip()
+        urgente = re.split(
+            r"\s*\(menos de 20 dias de antecedência\)\s*:?\s*$",
+            urgente,
+            flags=re.IGNORECASE,
+        )[0].strip()
         result["just_viagem_urgente"] = urgente or None
 
     # Remove pipe-only or label-only artifacts
@@ -434,7 +522,9 @@ def parse_justificativas(text: str) -> Dict[str, Optional[str]]:
 def parse_debito_recurso(text: str) -> Optional[str]:
     block = find_block(r"D[ÉE]BITO DO RECURSO:\s*", r"$", text)
     if block is None:
-        m = re.search(r"D[ÉE]BITO DO RECURSO:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(
+            r"D[ÉE]BITO DO RECURSO:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL
+        )
         block = m.group(1).strip() if m else ""
 
     if re.search(r"\(\s*[xX]\s*\)\s*CCHSA\b", block):
@@ -457,14 +547,24 @@ def parse_debito_recurso(text: str) -> Optional[str]:
 
 def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
     if tipo.lower() == "ida":
-        block = find_block(r"DESTINO\s*\(?Ida\)?:\s*", r"DESTINO\s*\(?Retorno\)?:", text)
+        block = find_block(
+            r"DESTINO\s*\(?Ida\)?:\s*", r"DESTINO\s*\(?Retorno\)?:", text
+        )
         if block is None:
-            m = re.search(r"DESTINO\s*\(?Ida\)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+            m = re.search(
+                r"DESTINO\s*\(?Ida\)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL
+            )
             block = m.group(1).strip() if m else ""
     else:
-        block = find_block(r"DESTINO\s*\(?Retorno\)?:\s*", r"DATA/HORA DA MISS[ÃA]O/COMPROMISSO:", text)
+        block = find_block(
+            r"DESTINO\s*\(?Retorno\)?:\s*", r"DATA/HORA DA MISS[ÃA]O/COMPROMISSO:", text
+        )
         if block is None:
-            m = re.search(r"DESTINO\s*\(?Retorno\)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+            m = re.search(
+                r"DESTINO\s*\(?Retorno\)?:\s*(.+)",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
             block = m.group(1).strip() if m else ""
 
     # Try "Local de Origem" first, then "Cidade de Origem" (template uses both)
@@ -478,13 +578,18 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
 
     m = re.search(pattern, block, flags=re.IGNORECASE | re.DOTALL)
     if not m:
-        origem = (
-            find_one(r"Local\s+de\s+Origem:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
-            or find_one(r"Cidade\s+de\s+Origem:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
+        origem = find_one(
+            r"Local\s+de\s+Origem:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL
+        ) or find_one(
+            r"Cidade\s+de\s+Origem:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL
         )
         destino = (
-            find_one(r"Local\s+de\s+Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
-            or find_one(r"Cidade\s+de\s+Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
+            find_one(
+                r"Local\s+de\s+Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL
+            )
+            or find_one(
+                r"Cidade\s+de\s+Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL
+            )
             or find_one(r"Destino:\s*(.+)", block, flags=re.IGNORECASE | re.DOTALL)
         )
         # Clean up leaked labels from adjacent cells/lines
@@ -493,7 +598,11 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
             if not val:
                 return ""
             # Remove everything after Data:, Hora:, or Origem: when it leaks into the value
-            val = re.split(r"\s*(?:Data\s*/?\s*Hora|Data|Hora|Origem):\s*", val, flags=re.IGNORECASE)[0]
+            val = re.split(
+                r"\s*(?:Data\s*/?\s*Hora|Data|Hora|Origem):\s*",
+                val,
+                flags=re.IGNORECASE,
+            )[0]
             return val.strip("|").strip()
 
         origem = _clean_destino(origem)
@@ -502,25 +611,35 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
         # Fallback: when "Cidade de Origem:" label is missing but city appears before "Cidade de Destino:"
         if not origem or re.fullmatch(r"\d{2}/\d{2}/\d{4}", origem):
             m = re.search(
-                r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s*\|\s*Cidade\s+de\s+Destino:", block, flags=re.IGNORECASE)
+                r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s*\|\s*Cidade\s+de\s+Destino:",
+                block,
+                flags=re.IGNORECASE,
+            )
             if not m:
                 # Even looser: any city/state pattern before Destino
                 m = re.search(
                     r"Cidade\s+de\s+([A-Za-zÀ-ÿ\s]+?/[A-Z]{2})\s+(?:Cidade\s+de\s+)?Destino:",
                     block,
-                    flags=re.IGNORECASE)
+                    flags=re.IGNORECASE,
+                )
             if m:
                 origem = m.group(1).strip()
 
         dh = find_one(
             r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})\s+(\d{2}:\d{2})",
             block,
-            flags=re.IGNORECASE | re.DOTALL)
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         # Also try separate Data + Hora lines
         if not dh:
             data_val = find_one(
-                r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})", block, flags=re.IGNORECASE | re.DOTALL)
-            hora_val = find_one(r"Hora:\s*(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+                r"(?:Data\s*/?\s*Hora|Data):\s*([0-3]\d/[0-1]\d/\d{4})",
+                block,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            hora_val = find_one(
+                r"Hora:\s*(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL
+            )
             if data_val and hora_val:
                 dh = f"{data_val} {hora_val}"
         # Ultimate fallback: scan block for any date+time pairs
@@ -537,7 +656,9 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
 
     # Build datetime from Data + Hora if available
     datahora = m.group("datahora").strip()
-    hora_val = find_one(r"Hora:\s*(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+    hora_val = find_one(
+        r"Hora:\s*(\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL
+    )
     if hora_val and not re.search(r"\d{2}:\d{2}$", datahora):
         datahora = f"{datahora} {hora_val}"
 
@@ -549,15 +670,27 @@ def parse_destino(text: str, tipo: str) -> Dict[str, Optional[str]]:
 
 
 def parse_missao(text: str) -> Dict[str, Optional[str]]:
-    block = find_block(r"DATA/HORA DA MISS[ÃA]O(?:/COMPROMISSO)?:\s*", r"D[ÉE]BITO DO RECURSO:", text)
+    block = find_block(
+        r"DATA/HORA DA MISS[ÃA]O(?:/COMPROMISSO)?:\s*", r"D[ÉE]BITO DO RECURSO:", text
+    )
     if block is None:
-        m = re.search(r"DATA/HORA DA MISS[ÃA]O(?:/COMPROMISSO)?:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(
+            r"DATA/HORA DA MISS[ÃA]O(?:/COMPROMISSO)?:\s*(.+)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         block = m.group(1).strip() if m else ""
 
     inicio = find_one(
-        r"Data/Hora In[ií]cio:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+        r"Data/Hora In[ií]cio:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})",
+        block,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     termino = find_one(
-        r"Data/Hora T[eé]rmino:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})", block, flags=re.IGNORECASE | re.DOTALL)
+        r"Data/Hora T[eé]rmino:\s*([0-3]\d/[0-1]\d/\d{4}\s+\d{2}:\d{2})",
+        block,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
 
     # PDF extraction may place both dates after Término label
     # (e.g. "Início: | Término: 10/06/2025 08:00 | 12/06/2025 18:00")
@@ -583,12 +716,17 @@ def parse_missao(text: str) -> Dict[str, Optional[str]]:
 
 
 def parse_identificacao(text: str) -> Dict[str, Any]:
-    block = find_block(r"IDENTIFICAÇ[ÃA]O\s*", r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:", text) or ""
+    block = (
+        find_block(r"IDENTIFICAÇ[ÃA]O\s*", r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:", text)
+        or ""
+    )
 
     nome = find_with_stop(r"Nome completo", block)
     cargo = find_with_stop(r"Cargo ou Fun[cç][aã]o que Ocupa", block)
 
-    cpf = find_with_stop(r"CPF", block) or find_one(r"CPF:\s*([0-9\.\-]{11,14}|\d{11})", block)
+    cpf = find_with_stop(r"CPF", block) or find_one(
+        r"CPF:\s*([0-9\.\-]{11,14}|\d{11})", block
+    )
     rg = find_with_stop(r"RG", block) or find_one(r"RG:\s*([0-9\.\-]+)", block)
 
     def _find_dob(txt: str) -> Optional[str]:
@@ -630,6 +768,7 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
         if dates:
             # Pick the earliest date as the most likely birth date
             from datetime import datetime
+
             parsed_dates = []
             for d in dates:
                 try:
@@ -645,25 +784,43 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
     mae = find_with_stop(r"Nome da M[ãa]e", block)
     endereco = find_with_stop(r"Endere[cç]o", block)
 
-    telefone = find_with_stop(r"Telefone", block) or find_one(r"Telefone:\s*([\d\(\)\-\s]+)", block)
-    email = find_with_stop(r"Email", block) or find_one(r"Email:\s*([^\s]+@[^\s]+)", block)
+    telefone = find_with_stop(r"Telefone", block) or find_one(
+        r"Telefone:\s*([\d\(\)\-\s]+)", block
+    )
+    email = find_with_stop(r"Email", block) or find_one(
+        r"Email:\s*([^\s]+@[^\s]+)", block
+    )
     if email:
         # Clean up trailing "Dados Bancários" or just "Bancários"/"Dados" that may leak from next line
-        email = re.sub(r"\s*(?:Dados\s+)?Banc[aá]rios:?\s*$", "", email, flags=re.IGNORECASE).strip()
+        email = re.sub(
+            r"\s*(?:Dados\s+)?Banc[aá]rios:?\s*$", "", email, flags=re.IGNORECASE
+        ).strip()
         email = re.sub(r"\s+Dados\s*$", "", email, flags=re.IGNORECASE).strip()
 
-    banco = find_with_stop(r"Banco", block) or find_one(r"Banco:\s*([A-Za-z0-9]+)", block)
-    agencia = find_with_stop(r"Ag[êe]ncia", block) or find_one(r"Ag[êe]ncia:\s*([0-9]+)", block)
+    banco = find_with_stop(r"Banco", block) or find_one(
+        r"Banco:\s*([A-Za-z0-9]+)", block
+    )
+    agencia = find_with_stop(r"Ag[êe]ncia", block) or find_one(
+        r"Ag[êe]ncia:\s*([0-9]+)", block
+    )
     conta = find_with_stop(r"Conta", block) or find_one(r"Conta:\s*([0-9]+)", block)
     if conta:
-        conta = re.sub(r"\s*(?:Banc[aá]rios:?|Dados\s+Banc[aá]rios:?|\s*DESCRIÇ[ÃA]O\s+DO\s+MOTIVO.*)$",
-                       "", conta, flags=re.IGNORECASE).strip()
-    passaporte = find_with_stop(r"Nº do Passaporte|Passaporte", block) or find_one_with_stop(
-        r"Nº do Passaporte|Passaporte", block)
-    if passaporte and re.search(r"Lota[cç][ãa]o|Órgão|Obrigatório", passaporte, re.IGNORECASE):
+        conta = re.sub(
+            r"\s*(?:Banc[aá]rios:?|Dados\s+Banc[aá]rios:?|\s*DESCRIÇ[ÃA]O\s+DO\s+MOTIVO.*)$",
+            "",
+            conta,
+            flags=re.IGNORECASE,
+        ).strip()
+    passaporte = find_with_stop(
+        r"Nº do Passaporte|Passaporte", block
+    ) or find_one_with_stop(r"Nº do Passaporte|Passaporte", block)
+    if passaporte and re.search(
+        r"Lota[cç][ãa]o|Órgão|Obrigatório", passaporte, re.IGNORECASE
+    ):
         passaporte = None
-    lotacao = find_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o",
-                             block) or find_one_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block)
+    lotacao = find_with_stop(
+        r"Lotação/Órgão|Lota[cç][ãa]o", block
+    ) or find_one_with_stop(r"Lotação/Órgão|Lota[cç][ãa]o", block)
 
     return {
         "nome_completo": nome,
@@ -683,11 +840,17 @@ def parse_identificacao(text: str) -> Dict[str, Any]:
 
 
 def parse_motivo_viagem(text: str) -> Optional[str]:
-    block = find_block(r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*",
-                       r"(?:RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\))", text)
+    block = find_block(
+        r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*",
+        r"(?:RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\))",
+        text,
+    )
     if block is None:
-        m = re.search(r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*(.+?)(?=RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\)|$)",
-                      text, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(
+            r"DESCRIÇ[ÃA]O DO MOTIVO DA VIAGEM:\s*(.+?)(?=RELAÇ[ÃA]O DE PERTIN[ÊE]NCIA|DESTINO\s*\(Ida\)|$)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         block = m.group(1).strip() if m else None
     return block.strip() if block else None
 
@@ -783,7 +946,9 @@ def _extract_text_from_pdf(path: Path) -> str:
             raise ValueError("PDF sem texto. Envie um PDF que não seja imagem/scan.")
         return text
     except Exception as exc:
-        raise ValueError("Falha ao ler PDF. Certifique-se de que é um PDF com texto.") from exc
+        raise ValueError(
+            "Falha ao ler PDF. Certifique-se de que é um PDF com texto."
+        ) from exc
 
 
 def _convert_to_pdf(path: Path) -> Path:
@@ -799,14 +964,20 @@ def _convert_to_pdf(path: Path) -> Path:
         "--nolockcheck",
         "--nodefault",
         "--nofirststartwizard",
-        "--convert-to", "pdf",
-        "--outdir", str(tmpdir),
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        str(tmpdir),
         str(path),
     ]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+    result = subprocess.run(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30
+    )
     if result.returncode != 0 or not out_path.exists():
         shutil.rmtree(tmpdir, ignore_errors=True)
-        raise ValueError("Falha ao converter arquivo para PDF. Verifique se o DOC/DOCX está legível.")
+        raise ValueError(
+            "Falha ao converter arquivo para PDF. Verifique se o DOC/DOCX está legível."
+        )
     return out_path
 
 
@@ -832,7 +1003,9 @@ def _extract_text_from_docx(source: Path) -> str:
                 unique_cells: List[str] = []
                 for cell in row.cells:
                     cell_text = cell.text.strip()
-                    if cell_text and (not unique_cells or cell_text != unique_cells[-1]):
+                    if cell_text and (
+                        not unique_cells or cell_text != unique_cells[-1]
+                    ):
                         unique_cells.append(cell_text)
                 if unique_cells:
                     lines.append(" | ".join(unique_cells))
@@ -916,8 +1089,12 @@ def build_anexo2_prefill(parsed: Dict[str, Any]) -> Dict[str, Any]:
     ret = parsed.get("destino_retorno") or {}
     missao = parsed.get("missao") or {}
 
-    ida_dt = _parse_br_datetime(ida.get("data_hora")) or _parse_br_datetime(missao.get("inicio"))
-    ret_dt = _parse_br_datetime(ret.get("data_hora")) or _parse_br_datetime(missao.get("termino"))
+    ida_dt = _parse_br_datetime(ida.get("data_hora")) or _parse_br_datetime(
+        missao.get("inicio")
+    )
+    ret_dt = _parse_br_datetime(ret.get("data_hora")) or _parse_br_datetime(
+        missao.get("termino")
+    )
 
     orgao = _map_orgao(parsed.get("debito_recurso"))
     atividades = parsed.get("motivo_viagem")
@@ -932,8 +1109,16 @@ def build_anexo2_prefill(parsed: Dict[str, Any]) -> Dict[str, Any]:
             "orgao": orgao,
         },
         "afastamento": {
-            "ida": {"origem": ida.get("local_origem"), "destino": ida.get("local_destino"), "data_hora": ida_dt},
-            "retorno": {"origem": ret.get("local_origem"), "destino": ret.get("local_destino"), "data_hora": ret_dt},
+            "ida": {
+                "origem": ida.get("local_origem"),
+                "destino": ida.get("local_destino"),
+                "data_hora": ida_dt,
+            },
+            "retorno": {
+                "origem": ret.get("local_origem"),
+                "destino": ret.get("local_destino"),
+                "data_hora": ret_dt,
+            },
         },
         "atividades_desenvolvidas": atividades,
         "viagem_realizada": "sim",
@@ -955,7 +1140,9 @@ def _build_warnings(prefill: Dict[str, Any]) -> List[str]:
         warnings.append("SIAPE não encontrado no Anexo I.")
     orgao = prop.get("orgao") or {}
     if not orgao:
-        warnings.append("Órgão (débito do recurso) não localizado; selecione manualmente.")
+        warnings.append(
+            "Órgão (débito do recurso) não localizado; selecione manualmente."
+        )
     elif orgao.get("tipo") in ("projetos", "outros") and not orgao.get("detalhe"):
         warnings.append("Detalhe do órgão para Projetos/Outros não foi identificado.")
 
@@ -1024,13 +1211,20 @@ def build_anexo1_prefill(parsed: Dict[str, Any]) -> Dict[str, Any]:
     transp = parsed.get("transporte") or {}
     just = parsed.get("justificativas") or {}
 
-    ida_dt = _parse_br_datetime(ida.get("data_hora")) or _parse_br_datetime(missao.get("inicio"))
-    ret_dt = _parse_br_datetime(ret.get("data_hora")) or _parse_br_datetime(missao.get("termino"))
+    ida_dt = _parse_br_datetime(ida.get("data_hora")) or _parse_br_datetime(
+        missao.get("inicio")
+    )
+    ret_dt = _parse_br_datetime(ret.get("data_hora")) or _parse_br_datetime(
+        missao.get("termino")
+    )
     mi_dt = _parse_br_datetime(missao.get("inicio"))
     mf_dt = _parse_br_datetime(missao.get("termino"))
 
     # Build transporte object
-    transporte = {"meios": transp.get("meios") or [], "termo_veiculo_proprio_ciente": False}
+    transporte = {
+        "meios": transp.get("meios") or [],
+        "termo_veiculo_proprio_ciente": False,
+    }
     if transp.get("distancia_km"):
         transporte["distancia_km"] = transp["distancia_km"]
 
@@ -1061,8 +1255,20 @@ def build_anexo1_prefill(parsed: Dict[str, Any]) -> Dict[str, Any]:
             "auxilio_alimentacao": ident.get("auxilio_alimentacao"),
         },
         "trechos": {
-            "ida": [{"origem": ida.get("local_origem"), "destino": ida.get("local_destino"), "data_hora": ida_dt}],
-            "retorno": [{"origem": ret.get("local_origem"), "destino": ret.get("local_destino"), "data_hora": ret_dt}],
+            "ida": [
+                {
+                    "origem": ida.get("local_origem"),
+                    "destino": ida.get("local_destino"),
+                    "data_hora": ida_dt,
+                }
+            ],
+            "retorno": [
+                {
+                    "origem": ret.get("local_origem"),
+                    "destino": ret.get("local_destino"),
+                    "data_hora": ret_dt,
+                }
+            ],
         },
         "missao": {"inicio_data_hora": mi_dt, "termino_data_hora": mf_dt},
         "debito_recurso": _map_debito_recurso_anexo1(parsed.get("debito_recurso")),
@@ -1075,7 +1281,9 @@ def build_anexo1_prefill(parsed: Dict[str, Any]) -> Dict[str, Any]:
     return clean(prefill)
 
 
-def build_anexo1_warnings(prefill: Dict[str, Any], *, skip_trechos: bool = False) -> List[str]:
+def build_anexo1_warnings(
+    prefill: Dict[str, Any], *, skip_trechos: bool = False
+) -> List[str]:
     warnings: List[str] = []
     servidor = prefill.get("servidor") or {}
     trechos = prefill.get("trechos") or {}

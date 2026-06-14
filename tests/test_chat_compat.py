@@ -5,6 +5,7 @@ Simula os dados que o chat (Dira) produziria e verifica se:
 2. Passam na validação do schema JSON
 3. São aceitos pela API (preview + generate)
 """
+
 from __future__ import annotations
 
 import sys
@@ -51,15 +52,31 @@ CHAT_ANEXO1 = {
     "motivo_viagem": "Participação em congresso de tecnologia",
     "relacao_pertinencia": "Relação de pertinência válida de exemplo com mais de dez caracteres.",
     "trechos": {
-        "ida": [{"origem": "João Pessoa/PB", "destino": "Recife/PE", "data_hora": "2026-05-20T08:00"}],
-        "retorno": [{"origem": "Recife/PE", "destino": "João Pessoa/PB", "data_hora": "2026-05-22T18:00"}],
+        "ida": [
+            {
+                "origem": "João Pessoa/PB",
+                "destino": "Recife/PE",
+                "data_hora": "2026-05-20T08:00",
+            }
+        ],
+        "retorno": [
+            {
+                "origem": "Recife/PE",
+                "destino": "João Pessoa/PB",
+                "data_hora": "2026-05-22T18:00",
+            }
+        ],
     },
     "missao": {
         "inicio_data_hora": "2026-05-20T09:00",
         "termino_data_hora": "2026-05-22T17:00",
     },
     "debito_recurso": {"tipo": "projeto", "detalhe": "Projeto X"},
-    "transporte": {"meios": ["veiculo_oficial"], "distancia_km": "", "termo_veiculo_proprio_ciente": False},
+    "transporte": {
+        "meios": ["veiculo_oficial"],
+        "distancia_km": "",
+        "termo_veiculo_proprio_ciente": False,
+    },
     "flags": {
         "envolve_fds_feriado_ou_dia_anterior": False,
         "fora_do_prazo": False,
@@ -91,12 +108,29 @@ CHAT_ANEXO2 = {
         "orgao": {"tipo": "cchsa", "detalhe": ""},
     },
     "afastamento": {
-        "ida": [{"origem": "João Pessoa/PB", "destino": "Recife/PE", "data_hora": "2026-05-20T08:00"}],
-        "retorno": [{"origem": "Recife/PE", "destino": "João Pessoa/PB", "data_hora": "2026-05-22T18:00"}],
+        "ida": [
+            {
+                "origem": "João Pessoa/PB",
+                "destino": "Recife/PE",
+                "data_hora": "2026-05-20T08:00",
+            }
+        ],
+        "retorno": [
+            {
+                "origem": "Recife/PE",
+                "destino": "João Pessoa/PB",
+                "data_hora": "2026-05-22T18:00",
+            }
+        ],
     },
     "alteracoes_cancelamentos_noshow": [],
     "atividades_tabela": [
-        {"data": "2026-05-20", "horario": "09:00", "cidade": "Recife", "atividades": "Reunião com equipe"},
+        {
+            "data": "2026-05-20",
+            "horario": "09:00",
+            "cidade": "Recife",
+            "atividades": "Reunião com equipe",
+        },
     ],
     "flags": {"prestacao_contas_fora_prazo": False},
     "justificativa_prestacao_contas_fora_prazo": "",
@@ -126,7 +160,10 @@ class TestChatAnexo1Compat:
         """Dados do chat devem gerar DOCX com sucesso."""
         r = client.post("/api/anexo1/generate?format=docx", json=CHAT_ANEXO1)
         assert r.status_code == 200
-        assert "application/vnd.openxmlformats-officedocument.wordprocessingml.document" in r.headers["content-type"]
+        assert (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            in r.headers["content-type"]
+        )
 
     def test_chat_city_format_weak_validation(self):
         """O chat aceita 'João Pessoa' (sem /UF) mas o backend/Zod exige Cidade/UF.
@@ -158,7 +195,9 @@ class TestChatAnexo1Compat:
         # Ajusta data de solicitação para não ficar fora do prazo (precisa de 10 dias)
         fds_payload["data_solicitacao"] = "2026-04-01"
         # Adiciona justificativas necessárias
-        fds_payload["justificativas"]["justificativa_fds_feriado_dia_anterior"] = "Viagem em fim de semana por necessidade do evento."
+        fds_payload["justificativas"]["justificativa_fds_feriado_dia_anterior"] = (
+            "Viagem em fim de semana por necessidade do evento."
+        )
         result = validate_and_enrich_anexo1(deepcopy(fds_payload))
         assert result["ok"] is True
         assert result["flags"]["envolve_fds_feriado_ou_dia_anterior"] is True
@@ -200,7 +239,10 @@ class TestChatAnexo2Compat:
     def test_api_generate_docx_passes(self):
         r = client.post("/api/anexo2/generate?format=docx", json=CHAT_ANEXO2)
         assert r.status_code == 200
-        assert "application/vnd.openxmlformats-officedocument.wordprocessingml.document" in r.headers["content-type"]
+        assert (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            in r.headers["content-type"]
+        )
 
     def test_chat_city_format_vs_backend(self):
         """Anexo II: chat aceita 'João Pessoa' mas backend schema EXIGE Cidade/UF.
@@ -212,6 +254,7 @@ class TestChatAnexo2Compat:
         bad_payload["afastamento"]["ida"][0]["origem"] = "João Pessoa"
         # Schema JSON deve rejeitar
         from app.schemas.validator import ValidationError
+
         try:
             validate_payload("anexo2", bad_payload)
             assert False, "Schema deveria rejeitar cidade sem /UF"
@@ -219,7 +262,11 @@ class TestChatAnexo2Compat:
             # O erro pode ser de pattern (regex) ou format ou "não é válido"
             messages = [e["message"].lower() for e in exc.errors]
             assert any(
-                "pattern" in m or "não é válido" in m or "não é um valor" in m or "informe" in m or "does not match" in m
+                "pattern" in m
+                or "não é válido" in m
+                or "não é um valor" in m
+                or "informe" in m
+                or "does not match" in m
                 for m in messages
             ), f"Erros inesperados: {messages}"
 

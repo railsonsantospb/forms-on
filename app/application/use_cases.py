@@ -23,6 +23,7 @@ class PreviewAnexo1UseCase:
         # This delegates to existing service for now
         # In future, will use domain entities directly
         from app.services.validate_anexo1 import validate_and_enrich_anexo1
+
         return validate_and_enrich_anexo1(payload)
 
 
@@ -38,6 +39,7 @@ class PreviewAnexo2UseCase:
     def execute(self, payload: dict) -> dict:
         """Validate and enrich Anexo II payload."""
         from app.services.validate_anexo2 import validate_and_enrich_anexo2
+
         return validate_and_enrich_anexo2(payload)
 
 
@@ -58,11 +60,12 @@ class GenerateDocumentUseCase:
         output_path: Path,
         placeholders: dict,
         format: Literal["docx", "pdf"] = "docx",
-        **kwargs
+        **kwargs,
     ) -> Path:
         """Generate a document in the requested format."""
         # For now, delegates to existing services
         # This will be refactored when adapters are implemented
         from app.services.docx_render import render_docx_from_template
+
         render_docx_from_template(template_path, output_path, placeholders, **kwargs)
         return output_path

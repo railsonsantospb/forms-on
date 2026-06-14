@@ -8,6 +8,7 @@ from app.domain.entities import Trecho
 
 class ValidationResult:
     """Result of a validation operation."""
+
     def __init__(self, ok: bool = True, errors: list[dict] = None):
         self.ok = ok
         self.errors = errors or []
@@ -33,14 +34,14 @@ class DateValidationService:
                 result.add_error(
                     f"trechos[{i}].data_chegada",
                     "Data de chegada não pode ser anterior à data de saída.",
-                    "date_order_invalid"
+                    "date_order_invalid",
                 )
 
             if trecho.data_saida > date.today() + timedelta(days=365):
                 result.add_error(
                     f"trechos[{i}].data_saida",
                     "Data de saída muito distante (máximo 1 ano).",
-                    "date_too_far"
+                    "date_too_far",
                 )
 
         return result
@@ -63,7 +64,7 @@ class PrazoValidationService:
         cls,
         tipo: Literal["diarias", "passagens", "diarias_passagens"],
         data_ida: date,
-        data_solicitacao: Optional[date] = None
+        data_solicitacao: Optional[date] = None,
     ) -> ValidationResult:
         """Validate if Anexo I request is within deadline."""
         result = ValidationResult()
@@ -76,7 +77,7 @@ class PrazoValidationService:
                 result.add_error(
                     "prazo",
                     f"Solicitação de diárias deve ser feita com {cls.DIARIAS_PRAZO_DIAS} dias de antecedência.",
-                    "fora_do_prazo"
+                    "fora_do_prazo",
                 )
 
         if tipo in ("passagens", "diarias_passagens"):
@@ -85,16 +86,14 @@ class PrazoValidationService:
                 result.add_error(
                     "prazo",
                     f"Solicitação de passagens deve ser feita com {cls.PASSAGENS_PRAZO_DIAS} dias de antecedência.",
-                    "fora_do_prazo"
+                    "fora_do_prazo",
                 )
 
         return result
 
     @classmethod
     def validate_anexo2_prazo(
-        cls,
-        data_retorno: date,
-        data_prestacao: Optional[date] = None
+        cls, data_retorno: date, data_prestacao: Optional[date] = None
     ) -> ValidationResult:
         """Validate if Anexo II report is within deadline."""
         result = ValidationResult()
@@ -106,7 +105,7 @@ class PrazoValidationService:
             result.add_error(
                 "prazo",
                 f"Relatório deve ser prestado em até {cls.RELATORIO_PRAZO_DIAS} dias do retorno.",
-                "fora_do_prazo"
+                "fora_do_prazo",
             )
 
         return result
